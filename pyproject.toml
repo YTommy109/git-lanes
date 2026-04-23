@@ -3,11 +3,11 @@ name = "git-lanes"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "pygit2",
-    "watchdog",
-    "jinja2",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pygit2>=1.15",
+    "watchdog>=4.0",
+    "jinja2>=3.1",
 ]
 
 [dependency-groups]
@@ -36,7 +36,7 @@ build       = "echo 'TODO: Electron build'"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "C901"]
+select = ["E", "F", "C901", "I"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
@@ -46,3 +46,10 @@ testpaths = ["tests/unit"]
 
 [tool.ty.environment]
 python-version = "3.12"
+
+[tool.coverage.run]
+source = ["backend"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 85
