@@ -1,0 +1,48 @@
+[project]
+name = "git-lanes"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pygit2",
+    "watchdog",
+    "jinja2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-playwright",
+    "playwright",
+    "taskipy",
+    "ruff",
+    "ty",
+    "pre-commit",
+]
+
+[tool.taskipy.tasks]
+dev         = "uvicorn backend.main:app --reload --port 8000"
+test        = "pytest tests/unit -v"
+"test:e2e"  = "pytest tests/e2e -v"
+lint        = "ruff check ."
+format      = "ruff format ."
+typecheck   = "ty check"
+migrate     = "atlas schema apply --url 'sqlite://${DB_PATH:-dev.db}' --to 'file://schema.hcl' --dev-url 'sqlite://dev?mode=memory'"
+build       = "echo 'TODO: Electron build'"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "C901"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+
+[tool.ty.environment]
+python-version = "3.12"
