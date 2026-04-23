@@ -6,9 +6,6 @@ client = TestClient(app)
 
 
 def test_ヘルスチェックが200を返す():
-    # --- Arrange ---
-    # TestClient は ASGI アプリを受け取り同期的に動作する
-
     # --- Act ---
     response = client.get("/health")
 
