@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
     "pygit2>=1.15",
     "watchdog>=4.0",
     "jinja2>=3.1",
@@ -43,7 +44,7 @@ select = ["E", "F", "C901", "I"]
 max-complexity = 10
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit"]
+testpaths = ["tests/unit", "tests/integration"]
 
 [tool.ty.environment]
 python-version = "3.12"

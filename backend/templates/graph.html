@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ repo_name }} — グラフ{% endblock %}
+{% block body %}
+<main class="app-shell">
+  <section class="graph-pane" aria-label="コミットグラフ">
+    <header class="graph-header">
+      <h1>{{ repo_name }}</h1>
+      <p class="meta">直近 50 コミット（単レーン表示）</p>
+    </header>
+    {% if not nodes %}
+      <p>コミットがありません。</p>
+    {% else %}
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="100%"
+        height="{{ svg_height }}"
+        viewBox="0 0 320 {{ svg_height }}"
+        role="img"
+        aria-label="コミット履歴"
+      >
+        {% for e in edges %}
+          {% set c = position_by_hash[e.child_hash] %}
+          {% set p = position_by_hash[e.parent_hash] %}
+          <line
+            x1="{{ c.x }}"
+            y1="{{ c.y }}"
+            x2="{{ p.x }}"
+            y2="{{ p.y }}"
+            stroke="#94a3b8"
+            stroke-width="2"
+          />
+        {% endfor %}
+        {% for node in nodes %}
+          <g
+            class="commit-node"
+            hx-get="/repos/{{ repo_id }}/commits/{{ node.commit.hash }}/detail"
+            hx-target="#commit-detail"
+            hx-swap="innerHTML"
+          >
+            <circle cx="{{ node.x }}" cy="{{ node.y }}" r="10"/>
+            <text
+              x="{{ node.x + 18 }}"
+              y="{{ node.y + 4 }}"
+              font-size="12"
+              fill="#0f172a"
+            >{{ node.commit.short_hash }}</text>
+          </g>
+        {% endfor %}
+      </svg>
+    {% endif %}
+  </section>
+  <aside class="detail-pane" aria-label="コミット詳細">
+    <h2>詳細</h2>
+    <div id="commit-detail" class="commit-detail">
+      <p class="placeholder">コミットを選択してください。</p>
+    </div>
+  </aside>
+</main>
+{% endblock %}

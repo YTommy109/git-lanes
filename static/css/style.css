@@ -1,0 +1,69 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.welcome {
+  max-width: 40rem;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.register-form input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.graph-pane {
+  flex: 2;
+  padding: 1rem;
+  overflow: auto;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.graph-header .meta {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.detail-pane {
+  flex: 1;
+  min-width: 18rem;
+  padding: 1rem;
+  background: #f1f5f9;
+}
+
+.commit-detail .placeholder {
+  color: #64748b;
+}
+
+.commit-node circle {
+  fill: #2563eb;
+  stroke: #1e3a8a;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.commit-node circle:hover {
+  fill: #1d4ed8;
+}
+
+.commit-detail-body p {
+  margin: 0.5rem 0;
+  word-break: break-all;
+}

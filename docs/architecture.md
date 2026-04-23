@@ -65,31 +65,25 @@ git-lanes/
 │   ├── main.js                  # アプリエントリ・FastAPI 起動管理
 │   ├── preload.js               # レンダラーに公開する IPC ブリッジ
 │   └── server.js                # FastAPI サブプロセス管理（起動・終了・ポート決定）
-├── src/
-│   └── git_lanes/
-│       ├── main.py              # FastAPI アプリケーションエントリポイント
-│       ├── routers/
-│       │   ├── html.py          # HTML レスポンスルーター（htmx 向け）
-│       │   └── api.py           # JSON API ルーター
-│       ├── services/
-│       │   ├── graph_service.py # グラフ生成・更新ロジック
-│       │   └── sync_service.py  # Git → SQLite 差分同期ロジック
-│       ├── repositories/
-│       │   ├── git_repo.py      # pygit2 経由の Git リポジトリ操作
-│       │   └── cache_repo.py    # SQLite CRUD
-│       ├── models/
-│       │   ├── commit.py        # Commit ドメインモデル
-│       │   ├── branch.py        # Branch ドメインモデル
-│       │   └── graph.py         # グラフノード・エッジモデル
-│       ├── graph/
-│       │   └── layout.py        # ブランチレーン座標計算アルゴリズム
-│       └── templates/
-│           ├── base.html        # ベーステンプレート
-│           ├── welcome.html     # ウェルカム画面（初回起動時）
-│           ├── graph.html       # グラフ画面（左右分割レイアウト）
-│           └── partials/
-│               ├── commits.svg.html  # コミットグラフ SVG 断片
-│               └── detail.html       # コミット詳細パネル（右ペイン）
+├── backend/                     # FastAPI アプリ（現行のコード配置）
+│   ├── main.py                  # アプリケーションエントリポイント
+│   ├── paths.py                 # DB ディレクトリ解決（テスト用環境変数対応）
+│   ├── routers/
+│   │   ├── html.py              # HTML レスポンスルーター（htmx 向け）
+│   │   └── api.py               # 登録などの API
+│   ├── services/
+│   │   ├── sync_service.py      # Git → SQLite 同期ロジック
+│   │   └── graph_layout.py      # ブランチレーン座標計算（段階的に拡張）
+│   ├── repositories/
+│   │   ├── ddl.py               # SQLite DDL（起動時に IF NOT EXISTS で適用）
+│   │   ├── git_repo.py          # pygit2 経由の Git リポジトリ操作
+│   │   └── cache_repo.py        # SQLite CRUD
+│   └── templates/
+│       ├── base.html            # ベーステンプレート
+│       ├── welcome.html         # ウェルカム画面（初回起動時）
+│       ├── graph.html           # グラフ画面（左右分割レイアウト）
+│       └── partials/
+│           └── detail.html      # コミット詳細パネル（右ペイン・htmx 断片）
 ├── static/
 │   └── css/
 │       └── style.css            # JS ファイルは原則不要（htmx + hyperscript で完結）
@@ -116,7 +110,7 @@ git-lanes/
 1. ユーザーが Git Lanes.app をダブルクリック
 2. Electron メインプロセス起動
 3. server.js: 空きポートを探して FastAPI サーバーを subprocess として起動
-4. server.js: FastAPI の /healthz エンドポイントをポーリングして起動完了を確認
+4. server.js: FastAPI の /health エンドポイントをポーリングして起動完了を確認
 5. main.js: BrowserWindow を生成し http://localhost:{port}/ をロード
 6. 画面にグラフが表示される
 7. アプリ終了時: BrowserWindow クローズ → FastAPI サブプロセスを SIGTERM で終了
@@ -127,7 +121,7 @@ git-lanes/
 ```
 1. ブラウザ → FastAPI: GET /repos/{repo_id}/graph
 2. FastAPI → SyncService: キャッシュ確認
-3. SyncService → GitRepo: git log --all --topo-order
+3. SyncService → GitRepo: pygit2 でコミットをトポロジカル順に走査する（`git log --all --topo-order` 相当。実装段階では HEAD 起点に限定してよい）
 4. SyncService → CacheRepo: INSERT commits / branches
 5. FastAPI → CacheRepo: SELECT 直近 50 コミット
 6. FastAPI → ブラウザ: HTML（SVG グラフ + htmx トリガー）
@@ -149,7 +143,7 @@ git-lanes/
    （htmx: hx-get、hx-swap="beforeend"）
 2. FastAPI → CacheRepo: SELECT cursor 以前の 50 コミット
 3. FastAPI → ブラウザ: HTML 断片（追加コミットの SVG）
-4. D3.js: 既存 SVG に新ノード・エッジを追加描画
+4. ブラウザ: htmx が受け取った断片を DOM に挿入する（クライアント側で D3.js 等による結合描画は行わない）
 ```
 
 ### 差分更新フロー（watchdog トリガー）
@@ -176,6 +170,10 @@ git-lanes/
 ---
 
 ## データベース設計
+
+### 永続ファイルの配置（現状）
+
+最小縦スライスでは、**`GIT_LANES_DATA_DIR`** 環境変数があればそのディレクトリに、なければ `~/Library/Application Support/git-lanes/` に **`git-lanes.db`** を1つ作成し、全リポジトリの行を単一 SQLite に格納する（`repositories.path` の一意制約を効かせるため）。将来、設計書どおり **リポジトリ ID ごとの `.db` ファイル**へシャード化する場合は `backend/paths.py` を拡張する。
 
 ### `commits` テーブル
 
@@ -323,7 +321,7 @@ CREATE TABLE repositories (
 3. htmx → FastAPI: GET /repos/{repo_id}/commits?cursor=<hash>&limit=50
 4. FastAPI → htmx: さらに次ページの hidden HTML 断片を返す
 5. htmx: afterend に挿入し、現在ページの hidden を除去
-6. D3.js: visible になったノード・エッジを既存 SVG に結合して描画
+6. サーバーが返した SVG/HTML 断片がそのまま表示される（レイアウト結合はサーバー側のテンプレート責務）
 ```
 
 ---
@@ -342,10 +340,10 @@ CREATE TABLE repositories (
 
 - Git リポジトリが見つからない場合: 404 を返し、ユーザーにパス確認を促す
 - SQLite ロック競合: リトライ（最大 3 回）後に 503 を返す
-- Git コマンド失敗: ログに記録し、最後に同期済みのキャッシュで表示を継続する
+- pygit2 による Git 操作が失敗: ログに記録し、最後に同期済みのキャッシュで表示を継続する
 
 ### セキュリティ
 
 - リポジトリパスはサーバー側で許可リスト（`repositories` テーブル）と照合する
 - ユーザー入力（カーソルハッシュなど）は正規表現でバリデーションする（`[0-9a-f]{7,40}`）
-- `subprocess` 呼び出し時は引数リスト形式を使用し、シェルインジェクションを防ぐ
+- Git 操作に `git` CLI（`subprocess`）は使わない（pygit2 のみ）。Electron が FastAPI を子プロセス起動するなど **必要な subprocess は引数リスト形式**とし、シェルインジェクションを防ぐ

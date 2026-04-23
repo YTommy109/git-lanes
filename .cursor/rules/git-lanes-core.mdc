@@ -1,0 +1,13 @@
+---
+description: Git Lanes 全体の不変条件（SVG・Git・品質ゲート）
+alwaysApply: true
+---
+
+# Git Lanes コア制約
+
+- **D3.js は使わない**。SVG は **Jinja2** でサーバー生成し、**htmx** で断片を差し替える。
+- **Git 操作は pygit2 のみ**（`subprocess` で `git` を叩かない）。
+- **複雑度**は Ruff（C901 / mccabe 10 以下）、**関数は約30行以内**、**本番 Python は150行/ファイル以内**を目安に分割する。
+- **ドックストリング**は Google スタイル・**日本語**。**コメントも日本語**（自明な処理には書かない）。
+- Python 変更後は **`uv run ruff format …` と `uv run ruff check --fix …`** を通す。型は **`uv run ty check backend`**。
+- テストは **`uv run task test`**（単体・結合）、ブラウザは **`uv run task test:e2e`**。

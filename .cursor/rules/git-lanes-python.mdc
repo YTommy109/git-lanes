@@ -1,0 +1,12 @@
+---
+description: backend と tests の Python 実装ルール
+globs: backend/**/*.py,tests/**/*.py
+alwaysApply: false
+---
+
+# Python（backend / tests）
+
+- パッケージは **`backend/`**。新規コードはここに置く。
+- SQLite 接続は **`with closing(connect(...)):`** のように確実に閉じる。
+- **UUID** はリポジトリ ID、**40桁 hex** はコミットハッシュ（`backend/validation.py` で検証）。
+- テストは **AAA** と日本語コメント。E2E は **Given/When/Then**（キーワードは英語）。

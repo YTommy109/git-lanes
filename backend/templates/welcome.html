@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Git Lanes — ようこそ{% endblock %}
+{% block body %}
+<main class="welcome">
+  <h1>Git Lanes</h1>
+  <p>リポジトリのルートディレクトリのパスを入力してください。</p>
+  <form method="post" action="/api/repos" class="register-form">
+    <label>
+      パス
+      <input name="path" type="text" required autocomplete="off" placeholder="/path/to/repo"/>
+    </label>
+    <button type="submit">開く</button>
+  </form>
+</main>
+{% endblock %}
