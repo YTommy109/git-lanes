@@ -77,9 +77,10 @@
 
 ### Playwright
 
-- Electron アプリを `_electron.launch()` で直接起動し、ネイティブウィンドウをそのままテストできる
+- Python バインディング（`pytest-playwright`）を使用し、FastAPI の Web UI をブラウザ経由でテストする
+- Electron 対応は後日追加する（`_electron.launch()` を使用予定）
 - ボタンの `disabled` 属性や aria 状態の検証が容易で、E2E 重点項目（操作制御）と相性が良い
-- `playwright/test` の `expect` により htmx の非同期 DOM 更新を自動待機できる
+- `pytest-playwright` の `page` fixture により htmx の非同期 DOM 更新を自動待機できる
 
 ---
 
@@ -90,6 +91,7 @@
 | ツール | 対象言語 | 用途 |
 |--------|----------|------|
 | [Ruff](https://github.com/astral-sh/ruff) | Python | リント・フォーマット（Rust 実装） |
+| [ty](https://github.com/astral-sh/ty) | Python | 型チェック（Rust 実装・Astral 製） |
 | [rustfmt](https://github.com/rust-lang/rustfmt) | Rust（将来採用時） | フォーマット |
 
 > Ruff は Rust で実装されており、flake8・isort・black の役割を単一ツールで担う。
