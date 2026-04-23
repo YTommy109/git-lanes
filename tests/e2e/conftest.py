@@ -1,4 +1,5 @@
 """E2E テスト用 fixture。FastAPI サーバーをサブプロセスで起動する。"""
+
 import subprocess
 import time
 import urllib.error
@@ -27,6 +28,6 @@ def _server():
     proc.wait()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def base_url(_server: None) -> str:
     return "http://localhost:8001"
