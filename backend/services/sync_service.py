@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import sqlite3
-
 import pygit2
+from sqlmodel import Session
 
-from backend.repositories import cache_read, cache_write
+from backend.repositories import cache_repo
 from backend.repositories.git_repo import (
     iter_local_branches,
     open_repository,
@@ -21,44 +20,60 @@ def _head_hex_or_none(repo: pygit2.Repository) -> str | None:
         return None
 
 
-def _should_resync(conn: sqlite3.Connection, repo_id: str, head_hex: str | None) -> bool:
-    if cache_read.get_repository(conn, repo_id) is None:
+def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool:
+    if cache_repo.get_repository(session, repo_id) is None:
         return False
     if head_hex is None:
         return True
-    if cache_read.count_commits(conn, repo_id) == 0:
+    if cache_repo.count_commits(session, repo_id) == 0:
         return True
-    rec = cache_read.get_repository(conn, repo_id)
+    rec = cache_repo.get_repository(session, repo_id)
     assert rec is not None
     return rec.cached_head != head_hex
 
 
-def sync_repository(conn: sqlite3.Connection, repo_id: str, repo_path: str) -> None:
+def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     """必要ならリポジトリ内容をフル再同期する。
 
     HEAD が前回同期時と同じでコミットが残っていれば何もしない。
 
     Args:
-        conn: SQLite 接続。
+        session: DB セッション。
         repo_id: リポジトリ ID。
         repo_path: Git 作業コピーのパス。
     """
     repo = open_repository(repo_path)
     head_hex = _head_hex_or_none(repo)
-    if not _should_resync(conn, repo_id, head_hex):
+    if not _should_resync(session, repo_id, head_hex):
         return
-    cache_write.purge_graph_data(conn, repo_id)
+    cache_repo.purge_graph_data(session, repo_id)
     if head_hex is None:
-        cache_write.update_sync_state(conn, repo_id, None)
+        cache_repo.update_sync_state(session, repo_id, None)
         return
+    _sync_commits_and_branches(session, repo_id, repo, head_hex)
+
+
+def _sync_commits_and_branches(
+    session: Session,
+    repo_id: str,
+    repo: pygit2.Repository,
+    head_hex: str,
+) -> None:
+    """コミット・ブランチをキャッシュに書き込む。
+
+    Args:
+        session: DB セッション。
+        repo_id: リポジトリ ID。
+        repo: pygit2 リポジトリ。
+        head_hex: 現在の HEAD ハッシュ。
+    """
     commits = walk_commits_from_head(repo)
-    # コミット行を先にすべて挿入してから親関係を登録する。
-    # 親ハッシュへの外部キー制約を満たすために2パスが必要。
+    # 親ハッシュへの外部キー制約を満たすため、コミットを先に全件挿入する。
     for c in commits:
         message_line = c.message.split("\n", 1)[0]
         cid = str(c.id)
-        cache_write.insert_commit_row(
-            conn,
+        cache_repo.insert_commit_row(
+            session,
             repo_id,
             cid,
             cid[:7],
@@ -69,11 +84,11 @@ def sync_repository(conn: sqlite3.Connection, repo_id: str, repo_path: str) -> N
         )
     for c in commits:
         for pos, parent_id in enumerate(c.parent_ids):
-            cache_write.insert_parent_row(conn, str(c.id), str(parent_id), pos)
+            cache_repo.insert_parent_row(session, str(c.id), str(parent_id), pos)
     try:
         for branch_name, tip in iter_local_branches(repo):
-            cache_write.insert_branch_row(conn, repo_id, branch_name, tip, 0)
+            cache_repo.insert_branch_row(session, repo_id, branch_name, tip, 0)
     except pygit2.GitError:
         pass
-    conn.commit()
-    cache_write.update_sync_state(conn, repo_id, head_hex)
+    session.commit()
+    cache_repo.update_sync_state(session, repo_id, head_hex)
