@@ -1,27 +1,31 @@
 """graph_layout の単体テスト。"""
 
-from backend.repositories.cache_read import CommitRecord
+from backend.models import Commit
 from backend.services.graph_layout import build_single_lane_layout
+
+_REPO_ID = "test-repo"
 
 
 def test_build_single_lane_layout_builds_edges_within_visible_set():
     # --- Arrange ---
     rows = [
-        CommitRecord(
+        Commit(
             hash="b" * 40,
             short_hash="bbbbbbb",
             message="two",
             author_name="a",
             author_email="a@b.c",
             committed_at=2,
+            repo_id=_REPO_ID,
         ),
-        CommitRecord(
+        Commit(
             hash="a" * 40,
             short_hash="aaaaaaa",
             message="one",
             author_name="a",
             author_email="a@b.c",
             committed_at=1,
+            repo_id=_REPO_ID,
         ),
     ]
     parents = {rows[0].hash: [rows[1].hash]}

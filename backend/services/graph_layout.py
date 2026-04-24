@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from backend.repositories.cache_read import CommitRecord
+from backend.models import Commit
 
 
 @dataclass(frozen=True)
 class LayoutNode:
     """レイアウト済みノード。"""
 
-    commit: CommitRecord
+    commit: Commit
     x: float
     y: float
 
@@ -25,7 +25,7 @@ class LayoutEdge:
 
 
 def build_single_lane_layout(
-    rows: list[CommitRecord], parents: dict[str, list[str]]
+    rows: list[Commit], parents: dict[str, list[str]]
 ) -> tuple[list[LayoutNode], list[LayoutEdge]]:
     """上から新しい順のコミット列に縦方向の座標を割り当てる。
 
