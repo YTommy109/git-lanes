@@ -144,6 +144,40 @@ def update_sync_state(session: Session, repo_id: str, head_hex: str | None) -> N
     session.commit()
 
 
+def _build_commit(
+    repo_id: str,
+    full_hash: str,
+    short_hash: str,
+    message: str,
+    author_name: str,
+    author_email: str,
+    committed_at: int,
+) -> Commit:
+    """Commit モデルを構築して返す。
+
+    Args:
+        repo_id: リポジトリ ID。
+        full_hash: コミットのフルハッシュ。
+        short_hash: 短縮ハッシュ（7文字）。
+        message: コミットメッセージ1行目。
+        author_name: 作者名。
+        author_email: 作者メールアドレス。
+        committed_at: UNIX タイムスタンプ。
+
+    Returns:
+        Commit モデルインスタンス。
+    """
+    return Commit(
+        hash=full_hash,
+        short_hash=short_hash,
+        message=message,
+        author_name=author_name,
+        author_email=author_email,
+        committed_at=committed_at,
+        repo_id=repo_id,
+    )
+
+
 def insert_commit_row(
     session: Session,
     repo_id: str,
@@ -167,14 +201,8 @@ def insert_commit_row(
         committed_at: UNIX タイムスタンプ。
     """
     session.merge(
-        Commit(
-            hash=full_hash,
-            short_hash=short_hash,
-            message=message,
-            author_name=author_name,
-            author_email=author_email,
-            committed_at=committed_at,
-            repo_id=repo_id,
+        _build_commit(
+            repo_id, full_hash, short_hash, message, author_name, author_email, committed_at
         )
     )
 
