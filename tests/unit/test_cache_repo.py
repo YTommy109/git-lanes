@@ -4,7 +4,7 @@ import time
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from backend.models import Branch, Commit, Repository
 from backend.repositories import cache_repo
@@ -15,7 +15,9 @@ from backend.repositories import cache_repo
 def _add_repo(session: Session, repo_id: str = "r1") -> Repository:
     """テスト用リポジトリを登録して返す。"""
     cache_repo.insert_repository(session, repo_id, f"/path/{repo_id}", repo_id)
-    return cache_repo.get_repository(session, repo_id)
+    repo = cache_repo.get_repository(session, repo_id)
+    assert repo is not None
+    return repo
 
 
 def _add_commit(
@@ -28,7 +30,9 @@ def _add_commit(
     cache_repo.insert_commit_row(
         session, repo_id, hash, hash[:7], "msg", "author", "a@b.com", committed_at
     )
-    return cache_repo.get_commit(session, repo_id, hash)
+    commit = cache_repo.get_commit(session, repo_id, hash)
+    assert commit is not None
+    return commit
 
 
 # ── get_repository ─────────────────────────────────────────
@@ -272,8 +276,6 @@ def test_insert_branch_row_tip_hashが更新される(session):
     session.commit()
 
     # --- Assert ---
-    from sqlmodel import select
-
     branch = session.exec(
         select(Branch).where(Branch.name == "main", Branch.repo_id == "r1")
     ).first()
