@@ -45,8 +45,8 @@
 │          │          │                                 │   │
 │     ┌────▼────┐ ┌───▼──────────────────────────┐     │   │
 │     │  Git    │ │ ~/Library/Application Support │     │   │
-│     │ リポジ  │ │ /git-lanes/<repo-id>.db       │     │   │
-│     │ トリ    │ │ （リポジトリごとに 1 ファイル）│     │   │
+│     │ リポジ  │ │ /git-lanes/git-lanes.db       │     │   │
+│     │ トリ    │ │ （現状: 単一 DB・将来シャード）│     │   │
 │     └─────────┘ └───────────────────────────────┘     │   │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -90,10 +90,9 @@ git-lanes/
 ├── tests/
 │   ├── unit/                    # 単体テスト（pytest）
 │   ├── integration/             # 統合テスト（pytest）
-│   └── e2e/                     # E2E テスト（Playwright）
-│       ├── *.spec.ts            # ページ操作・画面遷移のテスト
-│       └── electron.spec.ts     # Electron アプリ起動テスト
-├── playwright.config.ts         # Playwright 設定ファイル
+│   ├── e2e/                     # E2E テスト（pytest-playwright・Python）
+│   │   └── test_*.py            # ページ操作・画面遷移のテスト
+│   └── support/                 # テスト共通 fixture
 ├── dist/                        # electron-builder 出力先（git 管理外）
 ├── package.json                 # Electron・npm 依存定義
 ├── pyproject.toml               # Python 依存定義

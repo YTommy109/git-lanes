@@ -52,6 +52,8 @@ def sync_repository(conn: sqlite3.Connection, repo_id: str, repo_path: str) -> N
         cache_write.update_sync_state(conn, repo_id, None)
         return
     commits = walk_commits_from_head(repo)
+    # コミット行を先にすべて挿入してから親関係を登録する。
+    # 親ハッシュへの外部キー制約を満たすために2パスが必要。
     for c in commits:
         message_line = c.message.split("\n", 1)[0]
         cid = str(c.id)

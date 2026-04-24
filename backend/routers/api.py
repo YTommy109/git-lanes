@@ -34,5 +34,6 @@ async def register_repository(path: Annotated[str, Form()]) -> RedirectResponse:
         try:
             cache_write.insert_repository(conn, repo_id, str(resolved), resolved.name)
         except sqlite3.IntegrityError as exc:
+            # TODO: 既存 repo_id を取得してグラフ画面へリダイレクトする（登録済みリスト実装時）
             raise HTTPException(status_code=409, detail="このパスは既に登録されています") from exc
     return RedirectResponse(url=f"/repos/{repo_id}/graph", status_code=303)
