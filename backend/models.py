@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from sqlalchemy import Column, Index, String
 from sqlmodel import Field, SQLModel
 
 
@@ -11,8 +12,8 @@ class Repository(SQLModel, table=True):
     __tablename__ = "repositories"
 
     id: str = Field(primary_key=True)
-    path: str = Field(unique=True)
-    name: str
+    path: str = Field(sa_column=Column(String, unique=True, nullable=False))
+    name: str = Field(sa_column=Column(String, nullable=False))
     cached_head: Optional[str] = None
     synced_at: Optional[int] = None
 
@@ -22,11 +23,13 @@ class Commit(SQLModel, table=True):
 
     __tablename__ = "commits"
 
+    __table_args__ = (Index("idx_commits_repo_committed_at", "repo_id", "committed_at"),)
+
     hash: str = Field(primary_key=True)
-    short_hash: str
-    message: str
-    author_name: str
-    author_email: str
+    short_hash: str = Field(sa_column=Column(String, nullable=False))
+    message: str = Field(sa_column=Column(String, nullable=False))
+    author_name: str = Field(sa_column=Column(String, nullable=False))
+    author_email: str = Field(sa_column=Column(String, nullable=False))
     committed_at: int
     repo_id: str = Field(foreign_key="repositories.id")
 
@@ -48,5 +51,5 @@ class Branch(SQLModel, table=True):
 
     name: str = Field(primary_key=True)
     repo_id: str = Field(primary_key=True, foreign_key="repositories.id")
-    tip_hash: str = Field(foreign_key="commits.hash")
+    tip_hash: str = Field(sa_column=Column(String, nullable=False))
     is_remote: int = Field(default=0)
