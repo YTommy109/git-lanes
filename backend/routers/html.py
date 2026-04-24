@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 
 from backend.db import get_session
+from backend.models import Repository
 from backend.repositories import cache_repo
 from backend.services import graph_layout, sync_service
 from backend.validation import parse_commit_hash, parse_repo_id
@@ -25,6 +26,34 @@ router = APIRouter(tags=["html"])
 async def welcome(request: Request) -> HTMLResponse:
     """ウェルカム画面を返す。"""
     return templates.TemplateResponse(request, "welcome.html", {})
+
+
+def _build_graph_context(
+    rid: str,
+    rec: Repository,
+    nodes: list,
+    edges: list,
+) -> dict:
+    """グラフ画面のテンプレートコンテキストを構築する。
+
+    Args:
+        rid: リポジトリ ID。
+        rec: リポジトリレコード。
+        nodes: レイアウト済みノード一覧。
+        edges: エッジ一覧。
+
+    Returns:
+        Jinja2 テンプレートに渡すコンテキスト辞書。
+    """
+    row_spacing = 52.0
+    return {
+        "repo_id": rid,
+        "repo_name": rec.name,
+        "nodes": nodes,
+        "edges": edges,
+        "position_by_hash": {n.commit.hash: n for n in nodes},
+        "svg_height": 80.0 + max(len(nodes), 1) * row_spacing,
+    }
 
 
 @router.get("/repos/{repo_id}/graph", response_class=HTMLResponse)
@@ -45,21 +74,8 @@ async def graph_page(
     rows = cache_repo.list_recent_commits(session, rid, 50)
     parents = cache_repo.parents_by_child(session, [r.hash for r in rows])
     nodes, edges = graph_layout.build_single_lane_layout(rows, parents)
-    position_by_hash = {n.commit.hash: n for n in nodes}
-    row_spacing = 52.0
-    svg_height = 80.0 + max(len(nodes), 1) * row_spacing
-    return templates.TemplateResponse(
-        request,
-        "graph.html",
-        {
-            "repo_id": rid,
-            "repo_name": rec.name,
-            "nodes": nodes,
-            "edges": edges,
-            "position_by_hash": position_by_hash,
-            "svg_height": svg_height,
-        },
-    )
+    context = _build_graph_context(rid, rec, nodes, edges)
+    return templates.TemplateResponse(request, "graph.html", context)
 
 
 @router.get(
