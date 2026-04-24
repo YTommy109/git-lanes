@@ -1,5 +1,8 @@
-# 既存の docs（ASCII 図・SQL フェンス等）と整合するため、厳しすぎるルールを無効化する
 config:
   MD013: false # 行長（日本語・URL を含む行が多い）
   MD040: false # フェンスに言語タグ（図やフローバーストは text 指定が冗長）
-  MD060: false # 表のパイプ整列（既存表が compact スタイル）
+  MD060:
+    style: "compact" # テーブルスタイルを compact（| cell | 形式）に統一する
+
+ignores:
+  - "docs/superpowers/**" # superpowers 生成ファイルは対象外

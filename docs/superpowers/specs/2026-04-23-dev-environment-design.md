@@ -1,14 +1,14 @@
 # 開発環境セットアップ 設計書
 
-**作成日**: 2026-04-23  
+**作成日**: 2026-04-23
 **対象**: git-lanes プロジェクトの開発環境初期構築
 
 ---
 
 ## 概要
 
-Python / Electron ハイブリッドアプリの開発環境を整備する。  
-`uv sync` 1 コマンドで依存関係を揃え、`uv run task <name>` で各種タスクを実行できる状態にする。  
+Python / Electron ハイブリッドアプリの開発環境を整備する。
+`uv sync` 1 コマンドで依存関係を揃え、`uv run task <name>` で各種タスクを実行できる状態にする。
 E2E テストは Python Playwright でブラウザのみを対象とし、Electron 対応は後日追加する。
 
 ---
@@ -117,6 +117,7 @@ SQLite は stdlib の `sqlite3` を使用するため依存に含めない。
 5. ライセンス
 
 **インストール手順**:
+
 ```bash
 uv sync
 uv run playwright install chromium

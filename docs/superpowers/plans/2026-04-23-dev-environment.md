@@ -37,6 +37,7 @@
 ### Task 1: pyproject.toml を作成する
 
 **Files:**
+
 - Create: `pyproject.toml`
 
 - [ ] **Step 1: pyproject.toml を作成する**
@@ -104,6 +105,7 @@ git commit -m "chore: pyproject.toml を追加する"
 ### Task 2: .pre-commit-config.yaml を作成する
 
 **Files:**
+
 - Create: `.pre-commit-config.yaml`
 
 - [ ] **Step 1: .pre-commit-config.yaml を作成する**
@@ -147,6 +149,7 @@ git commit -m "chore: .pre-commit-config.yaml を追加する"
 ### Task 3: backend スケルトンと単体テストを作成する
 
 **Files:**
+
 - Create: `backend/__init__.py`
 - Create: `backend/main.py`
 - Create: `backend/routers/.gitkeep`
@@ -218,6 +221,7 @@ uv run pytest tests/unit/test_app.py -v
 ```
 
 期待結果:
+
 ```
 tests/unit/test_app.py::test_ヘルスチェックが200を返す PASSED
 1 passed in 0.xx s
@@ -235,6 +239,7 @@ git commit -m "feat: backend スケルトンと単体テストを追加する"
 ### Task 4: E2E テスト環境を作成する
 
 **Files:**
+
 - Create: `tests/e2e/__init__.py`
 - Create: `tests/e2e/conftest.py`
 - Create: `tests/e2e/test_smoke.py`
@@ -305,6 +310,7 @@ uv run pytest tests/e2e/test_smoke.py -v
 ```
 
 期待結果:
+
 ```
 tests/e2e/test_smoke.py::test_ヘルスチェックエンドポイントが応答する PASSED
 1 passed in x.xx s
@@ -322,6 +328,7 @@ git commit -m "test: E2E スモークテストを追加する"
 ### Task 5: schema.hcl を作成する
 
 **Files:**
+
 - Create: `schema.hcl`
 
 - [ ] **Step 1: schema.hcl を作成する**
@@ -368,6 +375,7 @@ git commit -m "chore: Atlas スキーマ定義を追加する"
 ### Task 6: README.md を作成する
 
 **Files:**
+
 - Create: `README.md`
 
 - [ ] **Step 1: README.md を作成する**
@@ -434,6 +442,7 @@ git commit -m "docs: README.md を追加する"
 ### Task 7: LICENSE ファイルを作成する
 
 **Files:**
+
 - Create: `LICENSE`
 
 - [ ] **Step 1: LICENSE ファイルを作成する**
@@ -474,6 +483,7 @@ git commit -m "docs: MIT License を追加する"
 ### Task 8: docs/technology.md を更新する
 
 **Files:**
+
 - Modify: `docs/technology.md`
 
 - [ ] **Step 1: 採用ツール一覧表に ty を追加する**

@@ -2,24 +2,26 @@
 
 ## プロジェクト概要
 
-Git リポジトリのブランチ構造を可視化する Mac デスクトップアプリ。  
-Electron が FastAPI（Python）をサブプロセスとして内包し、`.app` として配布する。  
+Git リポジトリのブランチ構造を可視化する Mac デスクトップアプリ。
+Electron が FastAPI（Python）をサブプロセスとして内包し、`.app` として配布する。
 SQLite キャッシュと watchdog による差分更新で、大規模リポジトリでも高速に動作させることが目的。
 
 ## 技術スタック（クイックリファレンス）
 
 | 役割 | 技術 |
-|------|------|
+| --- | --- |
 | デスクトップシェル | Electron 32+ |
 | バックエンド | Python 3.12+ / FastAPI |
 | Git 操作 | pygit2（libgit2 バインディング） |
 | FS 監視 | watchdog（FSEvents 使用） |
 | DB | SQLite（`~/Library/Application Support/git-lanes/<repo-id>.db`） |
+| ORM / クエリ層 | SQLModel（SQLAlchemy + Pydantic ベース） |
 | SVG 生成 | Jinja2 テンプレート（サーバーサイド生成、D3.js は使わない） |
 | フロントエンド | htmx 2.x + hyperscript 0.9.x |
 | E2E テスト | Playwright（TypeScript） |
 | タスクランナー | taskipy（`uv run task <name>`） |
 | Lint / Format | Ruff（Rust 実装） |
+| MD Lint | markdownlint-cli2 |
 | コミット前ゲート | pre-commit |
 
 ## タスク実行コマンド
@@ -31,13 +33,14 @@ uv run task test       # 単体・統合テスト（pytest）
 uv run task test:e2e   # E2E テスト（Playwright）
 uv run task lint       # ruff check
 uv run task format     # ruff format
+uv run task lint:md    # markdownlint-cli2（グローバルインストール前提）
 uv run task build      # Mac 向け .app ビルド
 ```
 
 ## コード品質の制約（必須・例外なし）
 
 | 制約 | 基準 | 測定ツール |
-|------|------|-----------|
+| --- | --- | --- |
 | 認知的複雑度 | 10 以下 | Ruff C901 |
 | 循環複雑度（代替） | 10 以下 | Ruff mccabe |
 | 関数の行数 | 30 行以内 | レビュー |
@@ -115,7 +118,7 @@ test("スクロールで過去コミットが追加表示される", async ({ pa
 ```
 
 | type | 用途 |
-|------|------|
+| --- | --- |
 | `feat` | 新機能 |
 | `fix` | バグ修正 |
 | `refactor` | リファクタリング |
