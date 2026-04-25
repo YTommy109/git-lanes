@@ -3,22 +3,23 @@
 ## プロジェクト概要
 
 Git リポジトリのブランチ構造を可視化する Mac デスクトップアプリ。
-Electron が FastAPI（Python）をサブプロセスとして内包し、`.app` として配布する。
+pywebview が FastAPI（Python）をサブプロセスとして内包し、`.app` として配布する。
 SQLite キャッシュと watchdog による差分更新で、大規模リポジトリでも高速に動作させることが目的。
 
 ## 技術スタック（クイックリファレンス）
 
 | 役割 | 技術 |
 | --- | --- |
-| デスクトップシェル | Electron 32+ |
+| デスクトップシェル | pywebview（macOS WKWebView） |
 | バックエンド | Python 3.12+ / FastAPI |
 | Git 操作 | pygit2（libgit2 バインディング） |
 | FS 監視 | watchdog（FSEvents 使用） |
 | DB | SQLite（`~/Library/Application Support/git-lanes/<repo-id>.db`） |
 | ORM / クエリ層 | SQLModel（SQLAlchemy + Pydantic ベース） |
 | SVG 生成 | Jinja2 テンプレート（サーバーサイド生成、D3.js は使わない） |
+| CSS フレームワーク | LismCSS（レイアウトプリミティブ） |
 | フロントエンド | htmx 2.x + hyperscript 0.9.x |
-| E2E テスト | Playwright（TypeScript） |
+| E2E テスト | Playwright（Python） |
 | タスクランナー | taskipy（`uv run task <name>`） |
 | Lint / Format | Ruff（Rust 実装） |
 | MD Lint | markdownlint-cli2 |
@@ -28,7 +29,7 @@ SQLite キャッシュと watchdog による差分更新で、大規模リポジ
 
 ```bash
 uv run task dev        # FastAPI 開発サーバー起動
-uv run task electron   # Electron 開発モード起動
+uv run task app        # pywebview アプリ起動
 uv run task test       # 単体・統合テスト（pytest）
 uv run task test:e2e   # E2E テスト（Playwright）
 uv run task lint       # ruff check
@@ -138,7 +139,7 @@ test("スクロールで過去コミットが追加表示される", async ({ pa
 2. **JavaScript は最小限** — htmx + hyperscript で完結させる。`app.js` は原則不要
 3. **SQLite はリポジトリごとに 1 ファイル** — `~/Library/Application Support/git-lanes/<repo-id>.db`
 4. **rebase / force push 対応** — 差分更新前に `cached_head` が現 HEAD の祖先かを確認し、そうでなければ全件再取得する
-5. **Python 同梱** — uv ポータブル Python を Electron バンドルに含める
+5. **Python 同梱** — uv ポータブル Python を pywebview アプリバンドルに含める
 6. **Git 操作は pygit2 のみ** — subprocess で git コマンドを叩かない
 
 ## ドキュメント

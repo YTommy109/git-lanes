@@ -4,7 +4,7 @@
 
 | レイヤー | 技術 | バージョン目安 | 役割 |
 | --- | --- | --- | --- |
-| デスクトップシェル | Electron | 32+ | Mac アプリ化・FastAPI サブプロセス管理 |
+| デスクトップシェル | pywebview | 4.x+ | macOS WKWebView で FastAPI の Web UI を表示 |
 | バックエンド | Python | 3.12+ | ビジネスロジック・Git 操作 |
 | Web フレームワーク | FastAPI | 0.115+ | REST API + HTML レスポンス |
 | Git 操作 | pygit2 | 1.x | libgit2 経由の Git リポジトリ操作 |
@@ -12,6 +12,7 @@
 | データベース | SQLite | 3.x | グラフデータのキャッシュ（リポジトリごとに 1 ファイル） |
 | ORM / クエリ層 | SQLModel | 0.0.21+ | SQLAlchemy + Pydantic ベースの型安全 ORM |
 | フロントエンド（SVG 生成） | Jinja2 | 3.x | サーバーサイドで SVG を生成してレスポンスに含める |
+| CSS フレームワーク | LismCSS | — | レイアウトプリミティブ（Stack・Cluster・Grid）による素の CSS に近いスタイリング |
 | フロントエンド（インタラクション） | htmx | 2.x | サーバードリブンな部分更新・先読みスクロール |
 | フロントエンド（クライアント挙動） | hyperscript | 0.9.x | htmx と連携するクライアントサイドのスクリプト |
 | E2E テスト | Playwright | 1.x | ブラウザ自動操作による E2E テスト |
@@ -24,12 +25,20 @@
 
 ## 各技術の選定理由
 
-### Electron
+### pywebview
 
-- Web 技術（HTML / CSS / JS）をそのまま Mac デスクトップアプリとして配布できる
-- `electron-builder` で Apple Silicon / Intel の Universal バイナリを生成できる
-- メインプロセスが Python（FastAPI）サーバーをサブプロセスとして起動・終了を管理し、ポートを決定してから `BrowserWindow` をロードする
-- ネイティブダイアログ（`dialog.showOpenDialog`）でフォルダ選択ができ、OS との統合が自然
+- Python ライブラリとして pip / uv でインストールでき、Node.js・npm が不要
+- macOS では WKWebView（Safari エンジン）を使用するため、Chromium を同梱せずバンドルサイズが小さい
+- FastAPI サーバーをサブプロセスで起動し、`webview.create_window()` で Web UI を表示する
+- ネイティブ統合機能（トレイ・複雑なメニュー等）は最小限だが、このアプリでは不要
+
+### LismCSS
+
+- レイアウトプリミティブ（`Stack`・`Cluster`・`Grid`・`Center` 等）を HTML クラスで表現する
+- Tailwind のような独自記法を持たず、素の CSS カスタムプロパティで動作するため可読性が高い
+- ビルドステップ不要（CDN または単一 CSS ファイルで利用可能）
+- Jinja2 テンプレートと相性が良く、サーバーサイドレンダリングで HTML 構造がレイアウトを表現できる
+- MCP サーバーが提供されており、AI によるコンポーネント生成・補完が可能
 
 ### Python + FastAPI
 

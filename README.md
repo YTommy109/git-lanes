@@ -12,8 +12,9 @@ Git リポジトリのブランチ構造を可視化する Mac デスクトッ�
 | DB | SQLite（起動時 DDL + Atlas 宣言型 `schema.hcl`） |
 | SVG / HTML 生成 | Jinja2 |
 | フロントエンド | htmx + hyperscript |
+| CSS フレームワーク | LismCSS |
 | E2E テスト | Playwright（Python） |
-| デスクトップシェル | Electron（予定） |
+| デスクトップシェル | pywebview |
 
 ## 必要環境
 
