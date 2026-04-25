@@ -4,10 +4,10 @@
 
 ```mermaid
 graph TB
-    subgraph ElectronApp[".app バンドル (Electron)"]
-        Main["メインプロセス\n・FastAPI サブプロセス管理\n・空きポート決定 → BrowserWindow 通知\n・ネイティブダイアログ提供\n・アプリ終了時 FastAPI を SIGTERM で終了"]
+    subgraph PywebviewApp[".app バンドル (pywebview)"]
+        Main["pywebview メインプロセス\n・FastAPI サブプロセス管理\n・空きポート決定 → create_window() で表示\n・アプリ終了時 FastAPI を SIGTERM で終了"]
 
-        subgraph Renderer["レンダラープロセス (BrowserWindow)"]
+        subgraph Renderer["WebView（WKWebView）"]
             SVG["Jinja2 SVG（サーバー生成）"]
             HTMX["htmx + hyperscript"]
         end
@@ -45,10 +45,8 @@ git-lanes/
 │   ├── specification.md
 │   ├── technology.md
 │   └── architecture.md
-├── electron/                    # Electron メインプロセス
-│   ├── main.js                  # アプリエントリ・FastAPI 起動管理
-│   ├── preload.js               # レンダラーに公開する IPC ブリッジ
-│   └── server.js                # FastAPI サブプロセス管理（起動・終了・ポート決定）
+├── app/                         # pywebview アプリエントリ
+│   └── main.py                  # FastAPI 起動・webview.create_window() 呼び出し
 ├── backend/                     # FastAPI アプリ（現行のコード配置）
 │   ├── main.py                  # アプリケーションエントリポイント
 │   ├── paths.py                 # DB ディレクトリ解決（テスト用環境変数対応）
@@ -77,8 +75,7 @@ git-lanes/
 │   ├── e2e/                     # E2E テスト（pytest-playwright・Python）
 │   │   └── test_*.py            # ページ操作・画面遷移のテスト
 │   └── support/                 # テスト共通 fixture
-├── dist/                        # electron-builder 出力先（git 管理外）
-├── package.json                 # Electron・npm 依存定義
+├── dist/                        # ビルド出力先（git 管理外）
 ├── pyproject.toml               # Python 依存定義
 └── README.md
 ```
@@ -87,14 +84,14 @@ git-lanes/
 
 ## データフロー
 
-### アプリ起動フロー（Electron）
+### アプリ起動フロー（pywebview）
 
 ```
 1. ユーザーが Git Lanes.app をダブルクリック
-2. Electron メインプロセス起動
-3. server.js: 空きポートを探して FastAPI サーバーを subprocess として起動
-4. server.js: FastAPI の /health エンドポイントをポーリングして起動完了を確認
-5. main.js: BrowserWindow を生成し http://localhost:{port}/ をロード
+2. pywebview メインプロセス起動
+3. app/main.py: 空きポートを探して FastAPI サーバーを subprocess として起動
+4. app/main.py: FastAPI の /health エンドポイントをポーリングして起動完了を確認
+5. webview.create_window() で WKWebView を生成し http://localhost:{port}/ をロード
 6. 画面にグラフが表示される
 7. アプリ終了時: BrowserWindow クローズ → FastAPI サブプロセスを SIGTERM で終了
 ```
@@ -333,4 +330,4 @@ sequenceDiagram
 
 - リポジトリパスはサーバー側で許可リスト（`repositories` テーブル）と照合する
 - ユーザー入力（カーソルハッシュなど）は正規表現でバリデーションする（`[0-9a-f]{7,40}`）
-- Git 操作に `git` CLI（`subprocess`）は使わない（pygit2 のみ）。Electron が FastAPI を子プロセス起動するなど **必要な subprocess は引数リスト形式**とし、シェルインジェクションを防ぐ
+- Git 操作に `git` CLI（`subprocess`）は使わない（pygit2 のみ）。pywebview が FastAPI を子プロセス起動するなど **必要な subprocess は引数リスト形式**とし、シェルインジェクションを防ぐ
