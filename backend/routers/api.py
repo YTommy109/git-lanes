@@ -34,6 +34,9 @@ async def register_repository(
     except pygit2.GitError as exc:
         raise HTTPException(status_code=400, detail="Git リポジトリとして開けません") from exc
     repo_id = str(uuid.uuid4())
+    existing = cache_repo.get_repository_by_path(session, str(resolved))
+    if existing is not None:
+        return RedirectResponse(url=f"/repos/{existing.id}/graph", status_code=303)
     try:
         cache_repo.insert_repository(session, repo_id, str(resolved), resolved.name)
     except IntegrityError as exc:

@@ -96,6 +96,19 @@ def parents_by_child(session: Session, child_hashes: list[str]) -> dict[str, lis
     return result
 
 
+def get_repository_by_path(session: Session, path: str) -> Repository | None:
+    """パスでリポジトリを取得する。
+
+    Args:
+        session: DB セッション。
+        path: リポジトリの絶対パス。
+
+    Returns:
+        見つかった場合は Repository、なければ None。
+    """
+    return session.exec(select(Repository).where(Repository.path == path)).first()
+
+
 def insert_repository(session: Session, repo_id: str, path: str, name: str) -> None:
     """リポジトリを登録する。
 
