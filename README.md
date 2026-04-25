@@ -22,7 +22,7 @@ Git リポジトリのブランチ構造を可視化する Mac デスクトッ�
 | --- | --- |
 | uv | `brew install uv` |
 | atlas | `brew install ariga/tap/atlas` |
-| markdownlint-cli2 | `npm install -g markdownlint-cli2` |
+| markdownlint-cli2 | `brew install markdownlint-cli2` |
 
 ## セットアップ
 
