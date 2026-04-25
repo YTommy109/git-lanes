@@ -14,6 +14,14 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: markdownlint-cli2
+        name: markdownlint-cli2
+        language: node
+        entry: markdownlint-cli2
+        types: [markdown]
+        additional_dependencies: [markdownlint-cli2]
+        files: ^(docs/|[^/]+\.md$)
+        exclude: ^docs/superpowers/
       - id: symlink-envrc
         name: worktree に .envrc シンボリックリンクを作成
         language: system

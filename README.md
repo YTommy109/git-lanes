@@ -28,6 +28,7 @@ Git リポジトリのブランチ構造を可視化する Mac デスクトッ�
 uv sync
 uv run playwright install chromium
 pre-commit install
+pre-commit install --hook-type post-checkout
 ```
 
 ## 開発コマンド
