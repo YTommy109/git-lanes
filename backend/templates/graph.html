@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ repo_name }} — グラフ{% endblock %}
 {% block body %}
-<main class="app-shell">
-  <section class="graph-pane" aria-label="コミットグラフ">
-    <header class="graph-header">
+<main class="l--flex" style="min-height: 100vh">
+  <section class="-p:20 -ov:auto -bgc:white" aria-label="コミットグラフ"
+           style="flex: 2; border-right: 1px solid var(--divider)">
+    <header>
       <h1>{{ repo_name }}</h1>
-      <p class="meta">直近 50 コミット（単レーン表示）</p>
+      <p class="-c:text-2 -fz:s">直近 50 コミット（単レーン表示）</p>
     </header>
     {% if not nodes %}
       <p>コミットがありません。</p>
@@ -26,7 +27,7 @@
             y1="{{ c.y }}"
             x2="{{ p.x }}"
             y2="{{ p.y }}"
-            stroke="#94a3b8"
+            stroke="var(--divider)"
             stroke-width="2"
           />
         {% endfor %}
@@ -43,17 +44,17 @@
               x="{{ node.x + 18 }}"
               y="{{ node.y + 4 }}"
               font-size="12"
-              fill="#0f172a"
+              fill="var(--text)"
             >{{ node.commit.short_hash }}</text>
           </g>
         {% endfor %}
       </svg>
     {% endif %}
   </section>
-  <aside class="detail-pane" aria-label="コミット詳細">
+  <aside class="-p:20 -bgc:base-2 -fx:1" style="min-width: 18rem" aria-label="コミット詳細">
     <h2>詳細</h2>
-    <div id="commit-detail" class="commit-detail">
-      <p class="placeholder">コミットを選択してください。</p>
+    <div id="commit-detail">
+      <p class="-c:text-2">コミットを選択してください。</p>
     </div>
   </aside>
 </main>

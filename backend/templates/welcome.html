@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Git Lanes — ようこそ{% endblock %}
 {% block body %}
-<main class="welcome">
+<main class="l--stack -p:20" style="max-width: 40rem; margin: 3rem auto">
   <h1>Git Lanes</h1>
   <p>リポジトリのルートディレクトリのパスを入力してください。</p>
-  <form method="post" action="/api/repos" class="register-form"
+  <form method="post" action="/api/repos" class="l--stack -g:15"
         _="on submit toggle @disabled on <button/>">
-    <label>
+    <label class="l--stack -g:5">
       パス
-      <input name="path" type="text" required autocomplete="off" placeholder="/path/to/repo"/>
+      <input name="path" type="text" required autocomplete="off"
+             placeholder="/path/to/repo" style="width: 100%; padding: 0.4rem 0.5rem"/>
     </label>
     <button type="submit">開く</button>
   </form>
