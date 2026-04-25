@@ -1,0 +1,11 @@
+---
+description: docs 編集時の整合性と markdownlint
+globs: docs/**/*.md
+alwaysApply: false
+---
+
+# ドキュメント
+
+- `specification.md` / `technology.md` / `architecture.md` の **矛盾を増やさない**（D3 不使用・pygit2・htmx は全ドキュメントで一致）。
+- `*.md` 編集後は **`markdownlint-cli2 --fix <ファイル>`** を実行する（設定はルートの `.markdownlint-cli2.yaml`）。
+- 実装とズレたディレクトリ図は **実コードに合わせて更新**する。

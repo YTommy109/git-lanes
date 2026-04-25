@@ -2,53 +2,37 @@
 
 ## システム全体像
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                  Electron (.app バンドル)                 │
-│                                                          │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │            Electron メインプロセス               │   │
-│  │  ・FastAPI サーバーをサブプロセスとして起動      │   │
-│  │  ・空きポートを決定して BrowserWindow に渡す     │   │
-│  │  ・アプリ終了時に FastAPI を終了する             │   │
-│  │  ・ネイティブダイアログ（フォルダ選択）を提供   │   │
-│  └──────────────────┬───────────────────────────────┘   │
-│                     │ spawn / IPC                        │
-│  ┌──────────────────▼───────────────────────────────┐   │
-│  │           Electron レンダラープロセス             │   │
-│  │      （BrowserWindow = 組み込みブラウザ）         │   │
-│  │                                                   │   │
-│  │  ┌──────────────────────┐  ┌──────────────────┐  │   │
-│  │  │  Jinja2 SVG          │  │  htmx +          │  │   │
-│  │  │  （サーバー生成）    │◄─┤  hyperscript     │  │   │
-│  │  └──────────────────────┘  └──────────────────┘  │   │
-│  └──────────────────────┬────────────────────────────┘   │
-│                         │ HTTP（localhost）               │
-│  ┌──────────────────────▼────────────────────────────┐   │
-│  │                 FastAPI サーバー                   │   │
-│  │                                                   │   │
-│  │  ┌──────────────┐  ┌──────────────┐              │   │
-│  │  │ HTML ルーター │  │ API ルーター  │              │   │
-│  │  │ （Jinja2）   │  │ （JSON）      │              │   │
-│  │  └──────┬───────┘  └──────┬───────┘              │   │
-│  │         └────────┬─────────┘                      │   │
-│  │              ┌───▼──────────┐                     │   │
-│  │              │  サービス層   │                     │   │
-│  │              └───┬──────────┘                     │   │
-│  │       ┌──────────┼──────────┐                     │   │
-│  │  ┌────▼────┐  ┌──▼──────┐  │                     │   │
-│  │  │ pygit2  │  │ SQLite  │  │                     │   │
-│  │  │ 操作    │  │ リポジ  │  │                     │   │
-│  │  │ モジュール│  │ トリ   │  │                     │   │
-│  │  └────┬────┘  └──┬──────┘  │                     │   │
-│  └───────┼──────────┼──────────┘                     │   │
-│          │          │                                 │   │
-│     ┌────▼────┐ ┌───▼──────────────────────────┐     │   │
-│     │  Git    │ │ ~/Library/Application Support │     │   │
-│     │ リポジ  │ │ /git-lanes/<repo-id>.db       │     │   │
-│     │ トリ    │ │ （リポジトリごとに 1 ファイル）│     │   │
-│     └─────────┘ └───────────────────────────────┘     │   │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph ElectronApp[".app バンドル (Electron)"]
+        Main["メインプロセス\n・FastAPI サブプロセス管理\n・空きポート決定 → BrowserWindow 通知\n・ネイティブダイアログ提供\n・アプリ終了時 FastAPI を SIGTERM で終了"]
+
+        subgraph Renderer["レンダラープロセス (BrowserWindow)"]
+            SVG["Jinja2 SVG（サーバー生成）"]
+            HTMX["htmx + hyperscript"]
+        end
+
+        subgraph FastAPIServer["FastAPI サーバー"]
+            HR["HTML ルーター（Jinja2）"]
+            AR["API ルーター（JSON）"]
+            SVC["サービス層"]
+            PG["pygit2 モジュール"]
+            DB["SQLite リポジトリ"]
+        end
+    end
+
+    GitRepo[("Git リポジトリ")]
+    AppSupport[("~/Library/Application Support\n/git-lanes/git-lanes.db\n（現状: 単一 DB・将来シャード）")]
+
+    Main -->|"spawn / IPC"| FastAPIServer
+    Main -.->|"ポート通知"| Renderer
+    Renderer -->|"HTTP（localhost）"| FastAPIServer
+    HR --> SVC
+    AR --> SVC
+    SVC --> PG
+    SVC --> DB
+    PG --> GitRepo
+    DB --> AppSupport
 ```
 
 ---
@@ -65,41 +49,34 @@ git-lanes/
 │   ├── main.js                  # アプリエントリ・FastAPI 起動管理
 │   ├── preload.js               # レンダラーに公開する IPC ブリッジ
 │   └── server.js                # FastAPI サブプロセス管理（起動・終了・ポート決定）
-├── src/
-│   └── git_lanes/
-│       ├── main.py              # FastAPI アプリケーションエントリポイント
-│       ├── routers/
-│       │   ├── html.py          # HTML レスポンスルーター（htmx 向け）
-│       │   └── api.py           # JSON API ルーター
-│       ├── services/
-│       │   ├── graph_service.py # グラフ生成・更新ロジック
-│       │   └── sync_service.py  # Git → SQLite 差分同期ロジック
-│       ├── repositories/
-│       │   ├── git_repo.py      # pygit2 経由の Git リポジトリ操作
-│       │   └── cache_repo.py    # SQLite CRUD
-│       ├── models/
-│       │   ├── commit.py        # Commit ドメインモデル
-│       │   ├── branch.py        # Branch ドメインモデル
-│       │   └── graph.py         # グラフノード・エッジモデル
-│       ├── graph/
-│       │   └── layout.py        # ブランチレーン座標計算アルゴリズム
-│       └── templates/
-│           ├── base.html        # ベーステンプレート
-│           ├── welcome.html     # ウェルカム画面（初回起動時）
-│           ├── graph.html       # グラフ画面（左右分割レイアウト）
-│           └── partials/
-│               ├── commits.svg.html  # コミットグラフ SVG 断片
-│               └── detail.html       # コミット詳細パネル（右ペイン）
+├── backend/                     # FastAPI アプリ（現行のコード配置）
+│   ├── main.py                  # アプリケーションエントリポイント
+│   ├── paths.py                 # DB ディレクトリ解決（テスト用環境変数対応）
+│   ├── routers/
+│   │   ├── html.py              # HTML レスポンスルーター（htmx 向け）
+│   │   └── api.py               # 登録などの API
+│   ├── services/
+│   │   ├── sync_service.py      # Git → SQLite 同期ロジック
+│   │   └── graph_layout.py      # ブランチレーン座標計算（段階的に拡張）
+│   ├── repositories/
+│   │   ├── ddl.py               # SQLite DDL（起動時に IF NOT EXISTS で適用）
+│   │   ├── git_repo.py          # pygit2 経由の Git リポジトリ操作
+│   │   └── cache_repo.py        # SQLite CRUD
+│   └── templates/
+│       ├── base.html            # ベーステンプレート
+│       ├── welcome.html         # ウェルカム画面（初回起動時）
+│       ├── graph.html           # グラフ画面（左右分割レイアウト）
+│       └── partials/
+│           └── detail.html      # コミット詳細パネル（右ペイン・htmx 断片）
 ├── static/
 │   └── css/
 │       └── style.css            # JS ファイルは原則不要（htmx + hyperscript で完結）
 ├── tests/
 │   ├── unit/                    # 単体テスト（pytest）
 │   ├── integration/             # 統合テスト（pytest）
-│   └── e2e/                     # E2E テスト（Playwright）
-│       ├── *.spec.ts            # ページ操作・画面遷移のテスト
-│       └── electron.spec.ts     # Electron アプリ起動テスト
-├── playwright.config.ts         # Playwright 設定ファイル
+│   ├── e2e/                     # E2E テスト（pytest-playwright・Python）
+│   │   └── test_*.py            # ページ操作・画面遷移のテスト
+│   └── support/                 # テスト共通 fixture
 ├── dist/                        # electron-builder 出力先（git 管理外）
 ├── package.json                 # Electron・npm 依存定義
 ├── pyproject.toml               # Python 依存定義
@@ -116,7 +93,7 @@ git-lanes/
 1. ユーザーが Git Lanes.app をダブルクリック
 2. Electron メインプロセス起動
 3. server.js: 空きポートを探して FastAPI サーバーを subprocess として起動
-4. server.js: FastAPI の /healthz エンドポイントをポーリングして起動完了を確認
+4. server.js: FastAPI の /health エンドポイントをポーリングして起動完了を確認
 5. main.js: BrowserWindow を生成し http://localhost:{port}/ をロード
 6. 画面にグラフが表示される
 7. アプリ終了時: BrowserWindow クローズ → FastAPI サブプロセスを SIGTERM で終了
@@ -127,7 +104,7 @@ git-lanes/
 ```
 1. ブラウザ → FastAPI: GET /repos/{repo_id}/graph
 2. FastAPI → SyncService: キャッシュ確認
-3. SyncService → GitRepo: git log --all --topo-order
+3. SyncService → GitRepo: pygit2 でコミットをトポロジカル順に走査する（`git log --all --topo-order` 相当。実装段階では HEAD 起点に限定してよい）
 4. SyncService → CacheRepo: INSERT commits / branches
 5. FastAPI → CacheRepo: SELECT 直近 50 コミット
 6. FastAPI → ブラウザ: HTML（SVG グラフ + htmx トリガー）
@@ -149,7 +126,7 @@ git-lanes/
    （htmx: hx-get、hx-swap="beforeend"）
 2. FastAPI → CacheRepo: SELECT cursor 以前の 50 コミット
 3. FastAPI → ブラウザ: HTML 断片（追加コミットの SVG）
-4. D3.js: 既存 SVG に新ノード・エッジを追加描画
+4. ブラウザ: htmx が受け取った断片を DOM に挿入する（クライアント側で D3.js 等による結合描画は行わない）
 ```
 
 ### 差分更新フロー（watchdog トリガー）
@@ -176,6 +153,10 @@ git-lanes/
 ---
 
 ## データベース設計
+
+### 永続ファイルの配置（現状）
+
+最小縦スライスでは、**`GIT_LANES_DATA_DIR`** 環境変数があればそのディレクトリに、なければ `~/Library/Application Support/git-lanes/` に **`git-lanes.db`** を1つ作成し、全リポジトリの行を単一 SQLite に格納する（`repositories.path` の一意制約を効かせるため）。将来、設計書どおり **リポジトリ ID ごとの `.db` ファイル**へシャード化する場合は `backend/paths.py` を拡張する。
 
 ### `commits` テーブル
 
@@ -241,9 +222,9 @@ CREATE TABLE repositories (
 画面を左右に二分割する。
 
 | ペイン | 内容 |
-|--------|------|
+| --- | --- |
 | 左（メイン） | ブランチグラフ（SVG）＋スクロールによる増分ロード |
-| 右（詳細） | クリックしたコミットの詳細（ハッシュ・メッセージ・作者・日時）|
+| 右（詳細） | クリックしたコミットの詳細（ハッシュ・メッセージ・作者・日時） |
 
 初回起動時（リポジトリ未登録）はウェルカム画面を表示し、「フォルダを開く」ボタンで Mac ネイティブダイアログを呼び出す。
 
@@ -261,7 +242,7 @@ CREATE TABLE repositories (
 **リモートブランチの同期状態:**
 
 | 状態 | 表示 |
-|------|------|
+| --- | --- |
 | ローカルと同じコミットを指している | ブランチ名の前に **塗り潰し円** を表示 |
 | ローカルと異なるコミットを指している | ブランチ名の前に **波線円** を表示 |
 
@@ -275,15 +256,19 @@ CREATE TABLE repositories (
 
 #### 先読みの流れ
 
-```
-初期ページロード時:
-  [現在のページ: visible] → [次のページ: hidden で先読み済み]
+```mermaid
+sequenceDiagram
+    participant B as ブラウザ
+    participant S as FastAPI
 
-ユーザーがスクロールして「次のページ」の先頭が表示域に入った瞬間:
-  1. hidden を外して visible にする（ユーザーには継続して見える）
-  2. さらに次のページを hidden で先読みリクエストする
+    B->>S: 初期ページロード
+    S-->>B: page-1（visible）+ page-2（hidden・先読み済み）
 
-以降これを繰り返す。
+    Note over B: スクロールで page-2 が表示域に入る
+    B->>B: page-2 の hidden を除去（intersect トリガー）
+    B->>S: GET /commits?cursor=page2_hash（hx-get）
+    S-->>B: page-3（hidden）
+    Note over B: 以降これを繰り返す
 ```
 
 #### HTML 構造
@@ -323,7 +308,7 @@ CREATE TABLE repositories (
 3. htmx → FastAPI: GET /repos/{repo_id}/commits?cursor=<hash>&limit=50
 4. FastAPI → htmx: さらに次ページの hidden HTML 断片を返す
 5. htmx: afterend に挿入し、現在ページの hidden を除去
-6. D3.js: visible になったノード・エッジを既存 SVG に結合して描画
+6. サーバーが返した SVG/HTML 断片がそのまま表示される（レイアウト結合はサーバー側のテンプレート責務）
 ```
 
 ---
@@ -333,7 +318,7 @@ CREATE TABLE repositories (
 ### キャッシュ戦略
 
 | シナリオ | 戦略 |
-|----------|------|
+| --- | --- |
 | 初回ロード | Git から全履歴を取得し SQLite に格納 |
 | 差分更新 | `cached_head..HEAD` の差分のみ取得 |
 | ページング | SQLite の `OFFSET` / カーソルページングで取得 |
@@ -342,10 +327,10 @@ CREATE TABLE repositories (
 
 - Git リポジトリが見つからない場合: 404 を返し、ユーザーにパス確認を促す
 - SQLite ロック競合: リトライ（最大 3 回）後に 503 を返す
-- Git コマンド失敗: ログに記録し、最後に同期済みのキャッシュで表示を継続する
+- pygit2 による Git 操作が失敗: ログに記録し、最後に同期済みのキャッシュで表示を継続する
 
 ### セキュリティ
 
 - リポジトリパスはサーバー側で許可リスト（`repositories` テーブル）と照合する
 - ユーザー入力（カーソルハッシュなど）は正規表現でバリデーションする（`[0-9a-f]{7,40}`）
-- `subprocess` 呼び出し時は引数リスト形式を使用し、シェルインジェクションを防ぐ
+- Git 操作に `git` CLI（`subprocess`）は使わない（pygit2 のみ）。Electron が FastAPI を子プロセス起動するなど **必要な subprocess は引数リスト形式**とし、シェルインジェクションを防ぐ
