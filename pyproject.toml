@@ -1,7 +1,7 @@
 [project]
 name = "git-lanes"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi>=0.136",
     "uvicorn[standard]>=0.46",
@@ -24,6 +24,7 @@ dev = [
     "ty",
     "pre-commit",
     "httpx",
+    "pyinstaller>=6.20.0",
 ]
 
 [tool.taskipy.tasks]
@@ -36,7 +37,7 @@ typecheck   = "ty check"
 "lint:md"   = "markdownlint-cli2 'docs/**/*.md' '*.md'"
 migrate     = "atlas schema apply --url 'sqlite://${DB_PATH:-dev.db}' --to 'file://schema.hcl' --dev-url 'sqlite://dev?mode=memory'"
 app         = "python -m backend.app"
-build       = "echo 'TODO: pywebview build'"
+build       = "pyinstaller -y git_lanes.spec"
 
 [tool.ruff]
 line-length = 100
