@@ -3,14 +3,14 @@ name = "git-lanes"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.30",
-    "python-multipart>=0.0.9",
-    "pygit2>=1.15",
-    "watchdog>=4.0",
+    "fastapi>=0.136",
+    "uvicorn[standard]>=0.46",
+    "python-multipart>=0.0.26",
+    "pygit2>=1.19",
+    "watchdog>=6.0",
     "jinja2>=3.1",
-    "sqlmodel>=0.0.21",
-    "pywebview>=4.0",
+    "sqlmodel>=0.0.38",
+    "pywebview>=6.2",
 ]
 
 [dependency-groups]
