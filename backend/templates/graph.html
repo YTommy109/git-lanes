@@ -36,6 +36,7 @@
             hx-get="/repos/{{ repo_id }}/commits/{{ node.commit.hash }}/detail"
             hx-target="#commit-detail"
             hx-swap="innerHTML"
+            _="on click remove .selected from .commit-node then add .selected to me"
           >
             <circle cx="{{ node.x }}" cy="{{ node.y }}" r="10"/>
             <text

@@ -4,7 +4,8 @@
 <main class="welcome">
   <h1>Git Lanes</h1>
   <p>リポジトリのルートディレクトリのパスを入力してください。</p>
-  <form method="post" action="/api/repos" class="register-form">
+  <form method="post" action="/api/repos" class="register-form"
+        _="on submit toggle @disabled on <button/>">
     <label>
       パス
       <input name="path" type="text" required autocomplete="off" placeholder="/path/to/repo"/>

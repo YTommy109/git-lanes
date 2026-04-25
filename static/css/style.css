@@ -63,6 +63,11 @@ body {
   fill: #1d4ed8;
 }
 
+.commit-node.selected circle {
+  fill: #7c3aed;
+  stroke: #4c1d95;
+}
+
 .commit-detail-body p {
   margin: 0.5rem 0;
   word-break: break-all;
