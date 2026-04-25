@@ -10,5 +10,6 @@
     "editor.formatOnSave": true
   },
   "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true
+  "files.trimTrailingWhitespace": true,
+  "specstory.cloudSync.enabled": "never"
 }
