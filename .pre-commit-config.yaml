@@ -27,6 +27,7 @@ repos:
         language: system
         entry: >-
           bash -c '
+          export PATH="$HOME/.nix-profile/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH";
           GIT_DIR=$(git rev-parse --git-dir);
           COMMON_DIR=$(git rev-parse --git-common-dir);
           if [ "$GIT_DIR" != "$COMMON_DIR" ]; then
