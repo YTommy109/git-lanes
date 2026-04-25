@@ -23,17 +23,19 @@ repos:
         files: ^(docs/|[^/]+\.md$)
         exclude: ^docs/superpowers/
       - id: symlink-envrc
-        name: worktree に .envrc シンボリックリンクを作成
+        name: worktree に .envrc のシンボリックリンクを作成し uv sync を実行
         language: system
         entry: >-
           bash -c '
           GIT_DIR=$(git rev-parse --git-dir);
           COMMON_DIR=$(git rev-parse --git-common-dir);
           if [ "$GIT_DIR" != "$COMMON_DIR" ]; then
+            ROOT="$(dirname "$COMMON_DIR")";
             ENVRC="$(pwd)/.envrc";
             if [ ! -e "$ENVRC" ]; then
-              ln -sfn "$(dirname "$COMMON_DIR")/.envrc" "$ENVRC";
+              ln -sfn "$ROOT/.envrc" "$ENVRC";
             fi;
+            uv sync;
           fi'
         stages: [post-checkout]
         always_run: true

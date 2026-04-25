@@ -45,7 +45,7 @@
               y="{{ node.y + 4 }}"
               font-size="12"
               fill="var(--text)"
-            >{{ node.commit.short_hash }}</text>
+            >{{ node.commit.message.split('\n')[0] | truncate(35, killwords=True, end='…') }}</text>
           </g>
         {% endfor %}
       </svg>
