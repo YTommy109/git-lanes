@@ -11,14 +11,14 @@
 | FS 監視 | watchdog | 4.x | FSEvents を用いたリポジトリ変更検知 |
 | データベース | SQLite | 3.x | グラフデータのキャッシュ（リポジトリごとに 1 ファイル） |
 | ORM / クエリ層 | SQLModel | 0.0.21+ | SQLAlchemy + Pydantic ベースの型安全 ORM |
-| フロントエンド（SVG 生成） | Jinja2 | 3.x | サーバーサイドで SVG を生成してレスポンスに含める |
+| テンプレートエンジン | Jinja2 | 3.x | HTML・SVG をサーバーサイドで生成し全ページデザインを担う |
 | CSS フレームワーク | LismCSS | — | レイアウトプリミティブ（Stack・Cluster・Grid）による素の CSS に近いスタイリング |
 | フロントエンド（インタラクション） | htmx | 2.x | サーバードリブンな部分更新・先読みスクロール |
 | フロントエンド（クライアント挙動） | hyperscript | 0.9.x | htmx と連携するクライアントサイドのスクリプト |
 | E2E テスト | Playwright | 1.x | ブラウザ自動操作による E2E テスト |
 | タスクランナー | taskipy | — | テスト・dev 起動などの開発タスク管理 |
 | コミット前品質ゲート | pre-commit | — | コミット前に lint・format・テストを自動実行 |
-| 静的解析・フォーマット | Rust ベースツール | — | コード品質の維持 |
+| 静的解析・フォーマット | Ruff / ty | — | Python の lint・format・型チェック |
 | Markdown Lint | markdownlint-cli2 | — | Markdown ドキュメントの品質チェック |
 
 ---
@@ -70,11 +70,11 @@
 - FastAPI の依存注入（`Depends`）との親和性が高く、セッション管理が簡潔になる
 - SQLite への接続は SQLAlchemy エンジン経由のため、将来のデータベース移行も容易
 
-### Jinja2（SVG 生成）
+### Jinja2（テンプレートエンジン）
 
 - FastAPI が既に依存しているため追加ライブラリ不要
+- 全ページのデザインを Jinja2 テンプレートで担う。SVG・HTML の両方をサーバーサイドで生成する
 - ブランチレーンの座標計算は Python で行い、結果を Jinja2 テンプレートで SVG に変換する
-- 専用の Python グラフライブラリは不要。D3.js も不要
 - 1 ページ 50 コミットという規模ではサーバーサイド SVG 生成で十分な速度が出る
 
 ### htmx + hyperscript
@@ -96,13 +96,12 @@
 ### Playwright
 
 - Python バインディング（`pytest-playwright`）を使用し、FastAPI の Web UI をブラウザ経由でテストする
-- Electron 対応は後日追加する（`_electron.launch()` を使用予定）
 - ボタンの `disabled` 属性や aria 状態の検証が容易で、E2E 重点項目（操作制御）と相性が良い
 - `pytest-playwright` の `page` fixture により htmx の非同期 DOM 更新を自動待機できる
 
 ---
 
-## Rust ベースの静的解析・フォーマッタ
+## 静的解析・型チェック
 
 ### 採用ツール
 
@@ -110,7 +109,6 @@
 | --- | --- | --- |
 | [Ruff](https://github.com/astral-sh/ruff) | Python | リント・フォーマット（Rust 実装） |
 | [ty](https://github.com/astral-sh/ty) | Python | 型チェック（Rust 実装・Astral 製） |
-| [rustfmt](https://github.com/rust-lang/rustfmt) | Rust（将来採用時） | フォーマット |
 
 > Ruff は Rust で実装されており、flake8・isort・black の役割を単一ツールで担う。
 
@@ -172,44 +170,22 @@ def test_parse_commit_hash_returns_short_hash():
 
 ### 統合テスト・E2E テスト（ガーキン記法）
 
-E2E テストは **Playwright** を使用する。`playwright/test` の `test` / `expect` を用い、コメントでガーキン記法のブロックを示す。
+E2E テストは **pytest-playwright**（Python）を使用する。コメントでガーキン記法のブロックを示す。
 
-```typescript
-test("スクロールで過去コミットが追加表示される", async ({ page }) => {
-    // Given: Git Lanes が起動し、初期グラフが表示されている状態
-    await page.goto("/");
-    await page.waitForSelector(".commit-node");
+```python
+def test_スクロールで過去コミットが追加表示される(page: Page, base_url: str):
+    # Given: グラフ画面が表示されている状態
+    page.goto(f"{base_url}/graph/1")
+    page.wait_for_selector(".commit-node")
 
-    // When: ページ末尾までスクロールして先読みページが表示域に入る
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForFunction(
-        () => document.querySelectorAll(".commit-page:not([hidden])").length > 1
-    );
+    # When: ページ末尾までスクロールして先読みページが表示域に入る
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    page.wait_for_function(
+        "document.querySelectorAll('.commit-page:not([hidden])').length > 1"
+    )
 
-    // Then: グラフに追加コミットが表示される
-    const pages = page.locator(".commit-page:not([hidden])");
-    await expect(pages).toHaveCount(2);
-});
-```
-
-Electron アプリを直接テストする場合は `_electron.launch()` を使用する。
-
-```typescript
-import { _electron as electron } from "playwright";
-
-test("アプリが起動してグラフが表示される", async () => {
-    // Given: Electron アプリを起動する
-    const app = await electron.launch({ args: ["electron/main.js"] });
-    const window = await app.firstWindow();
-
-    // When: グラフページが読み込まれる
-    await window.waitForSelector(".commit-node");
-
-    // Then: コミットノードが 1 件以上表示されている
-    await expect(window.locator(".commit-node").first()).toBeVisible();
-
-    await app.close();
-});
+    # Then: グラフに追加コミットが表示される
+    assert page.locator(".commit-page:not([hidden])").count() == 2
 ```
 
 ---
@@ -217,7 +193,6 @@ test("アプリが起動してグラフが表示される", async () => {
 ## パッケージ管理・タスクランナー
 
 - Python: `uv`（高速リゾルバ）を使用し、`pyproject.toml` で依存を管理する
-- Electron / フロントエンド: `npm` で管理し、`package.json` に依存を記述する
 - 開発タスク: **taskipy** を使用する。テスト実行・dev サーバー起動・ビルドなど、すべての開発コマンドを `taskipy` 経由で統一する
 
 ### taskipy タスク例
@@ -225,13 +200,15 @@ test("アプリが起動してグラフが表示される", async () => {
 | タスク名 | 内容 |
 | --- | --- |
 | `dev` | FastAPI 開発サーバーを起動する |
-| `electron` | Electron アプリを開発モードで起動する |
+| `app` | pywebview アプリを起動する |
 | `test` | pytest で単体テスト・統合テストを実行する |
 | `test:e2e` | Playwright で E2E テストを実行する |
 | `lint` | `ruff check` でリントを実行する |
 | `format` | `ruff format` でフォーマットを実行する |
+| `typecheck` | `ty check` で型チェックを実行する |
 | `lint:md` | `markdownlint-cli2` で Markdown をチェックする |
-| `build` | Electron アプリを Mac 向けにビルドする |
+| `migrate` | Atlas で DB スキーマを適用する |
+| `build` | pywebview アプリを Mac 向けにビルドする |
 
 ---
 
@@ -310,8 +287,7 @@ repos:
 
 1. `ruff check` — リント
 2. `ruff format --check` — フォーマット
-3. `pytest --cov` — テスト & カバレッジ（85% 以上を必須とする）
-4. ファイル行数チェック（150 行超を検出するシェルスクリプト）
-5. `npx playwright test` — E2E テスト実行
-6. `npm run build` — Electron アプリのビルド確認
-7. `electron-builder --mac` — Mac 向け `.app` バンドル生成の確認
+3. `ty check` — 型チェック
+4. `pytest --cov` — テスト & カバレッジ（85% 以上を必須とする）
+5. ファイル行数チェック（150 行超を検出するシェルスクリプト）
+6. `pytest tests/e2e` — E2E テスト実行
