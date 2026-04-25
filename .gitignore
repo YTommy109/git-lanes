@@ -4,3 +4,4 @@ htmlcov/
 __pycache__/
 *.py[cod]
 .venv/
+dist/
