@@ -135,12 +135,11 @@ test("スクロールで過去コミットが追加表示される", async ({ pa
 
 ## アーキテクチャの重要な決定事項
 
-1. **D3.js は使わない** — SVG は Python + Jinja2 でサーバーサイド生成する
-2. **JavaScript は最小限** — htmx + hyperscript で完結させる。`app.js` は原則不要
-3. **SQLite はリポジトリごとに 1 ファイル** — `~/Library/Application Support/git-lanes/<repo-id>.db`
-4. **rebase / force push 対応** — 差分更新前に `cached_head` が現 HEAD の祖先かを確認し、そうでなければ全件再取得する
-5. **Python 同梱** — uv ポータブル Python を pywebview アプリバンドルに含める
-6. **Git 操作は pygit2 のみ** — subprocess で git コマンドを叩かない
+1. **JavaScript は最小限** — htmx + hyperscript で完結させる。`app.js` は原則不要
+2. **SQLite はリポジトリごとに 1 ファイル** — `~/Library/Application Support/git-lanes/<repo-id>.db`
+3. **rebase / force push 対応** — 差分更新前に `cached_head` が現 HEAD の祖先かを確認し、そうでなければ全件再取得する
+4. **Python 同梱** — uv ポータブル Python を pywebview アプリバンドルに含める
+5. **Git 操作は pygit2 のみ** — subprocess で git コマンドを叩かない
 
 ## ドキュメント
 
