@@ -31,8 +31,9 @@ def test_register_rejects_duplicate_path(tmp_path, monkeypatch):
     # --- Act ---
     second = client.post("/api/repos", data={"path": str(repo_path)}, follow_redirects=False)
 
-    # --- Assert ---
-    assert second.status_code == 409
+    # --- Assert: 既存リポジトリのグラフへリダイレクトする ---
+    assert second.status_code == 303
+    assert "/graph" in second.headers["location"]
 
 
 def test_graph_returns_404_for_unknown_repo(tmp_path, monkeypatch):

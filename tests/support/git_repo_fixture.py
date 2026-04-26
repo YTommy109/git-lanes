@@ -31,3 +31,41 @@ def make_two_commit_repo(path: Path) -> Path:
     tree2 = repo.index.write_tree()
     repo.create_commit("refs/heads/main", sig, sig, "second", tree2, [oid1])
     return path
+
+
+def make_two_branch_repo(path: Path) -> Path:
+    """main と feat ブランチを持つリポジトリを作成する。
+
+    Args:
+        path: リポジトリのルートディレクトリ。
+
+    Returns:
+        作成したリポジトリのパス。
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    repo = pygit2.init_repository(str(path), False)
+    sig = pygit2.Signature("テスト", "t@example.com", int(time.time()), 0)
+
+    (path / "a.txt").write_text("a\n", encoding="utf-8")
+    repo.index.add("a.txt")
+    repo.index.write()
+    tree1 = repo.index.write_tree()
+    oid1 = repo.create_commit("refs/heads/main", sig, sig, "first", tree1, [])
+
+    commit1 = repo.get(oid1)
+    assert isinstance(commit1, pygit2.Commit)
+    repo.create_branch("feat", commit1, False)
+
+    (path / "b.txt").write_text("b\n", encoding="utf-8")
+    repo.index.add("b.txt")
+    repo.index.write()
+    tree2 = repo.index.write_tree()
+    repo.create_commit("refs/heads/feat", sig, sig, "feat commit", tree2, [oid1])
+
+    (path / "c.txt").write_text("c\n", encoding="utf-8")
+    repo.index.add("c.txt")
+    repo.index.write()
+    tree3 = repo.index.write_tree()
+    repo.create_commit("refs/heads/main", sig, sig, "second", tree3, [oid1])
+
+    return path

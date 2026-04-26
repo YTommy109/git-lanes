@@ -6,7 +6,7 @@
            style="flex: 2; border-right: 1px solid var(--divider)">
     <header>
       <h1>{{ repo_name }}</h1>
-      <p class="-c:text-2 -fz:s">直近 50 コミット（単レーン表示）</p>
+      <p class="-c:text-2 -fz:s">直近 50 コミット</p>
     </header>
     {% if not nodes %}
       <p>コミットがありません。</p>
@@ -15,23 +15,55 @@
         xmlns="http://www.w3.org/2000/svg"
         width="100%"
         height="{{ svg_height }}"
-        viewBox="0 0 320 {{ svg_height }}"
+        viewBox="0 0 {{ svg_width }} {{ svg_height }}"
         role="img"
         aria-label="コミット履歴"
       >
+        {# ブランチ名ラベル（斜め -40°・下端 Y=95 で下揃え） #}
+        {% for bl in branch_lanes %}
+          {% set color = lane_colors[bl.lane % 8] %}
+          <text
+            transform="rotate(-40,{{ bl.x }},95)"
+            x="{{ bl.x }}"
+            y="95"
+            font-size="11"
+            fill="{{ color }}"
+            font-weight="bold"
+          >{{ bl.name }}</text>
+        {% endfor %}
+
+        {# 波線：独自コミットなしブランチ（シンボル丸 + 波線） #}
+        {% for bl in branch_lanes %}
+          {% if not bl.has_unique_commits and bl.connect_hash in position_by_hash %}
+            {% set color = lane_colors[bl.lane % 8] %}
+            {% set target = position_by_hash[bl.connect_hash] %}
+            <line
+              x1="{{ bl.x }}" y1="145"
+              x2="{{ target.x }}" y2="{{ target.y }}"
+              stroke="{{ color }}"
+              stroke-width="2"
+              stroke-dasharray="5,4"
+            />
+            <circle cx="{{ bl.x }}" cy="145" r="5" fill="{{ color }}"/>
+          {% endif %}
+        {% endfor %}
+
+        {# エッジ（コミット間の接続線） #}
         {% for e in edges %}
           {% set c = position_by_hash[e.child_hash] %}
           {% set p = position_by_hash[e.parent_hash] %}
+          {% set color = lane_colors[c.lane % 8] %}
           <line
-            x1="{{ c.x }}"
-            y1="{{ c.y }}"
-            x2="{{ p.x }}"
-            y2="{{ p.y }}"
-            stroke="var(--divider)"
-            stroke-width="2"
+            x1="{{ c.x }}" y1="{{ c.y }}"
+            x2="{{ p.x }}" y2="{{ p.y }}"
+            stroke="{{ color }}"
+            stroke-width="2.5"
           />
         {% endfor %}
+
+        {# コミット円 #}
         {% for node in nodes %}
+          {% set color = lane_colors[node.lane % 8] %}
           <g
             class="commit-node"
             hx-get="/repos/{{ repo_id }}/commits/{{ node.commit.hash }}/detail"
@@ -39,13 +71,13 @@
             hx-swap="innerHTML"
             _="on click remove .selected from .commit-node then add .selected to me"
           >
-            <circle cx="{{ node.x }}" cy="{{ node.y }}" r="10"/>
+            <circle cx="{{ node.x }}" cy="{{ node.y }}" r="8" fill="{{ color }}"/>
             <text
-              x="{{ node.x + 18 }}"
+              x="{{ node.x + 15 }}"
               y="{{ node.y + 4 }}"
               font-size="12"
               fill="var(--text)"
-            >{{ node.commit.message.split('\n')[0] | truncate(35, killwords=True, end='…') }}</text>
+            >{{ node.commit.message.split('\n')[0] | truncate(40, killwords=True, end='…') }}</text>
           </g>
         {% endfor %}
       </svg>
