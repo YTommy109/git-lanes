@@ -9,6 +9,35 @@
   <script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
 </head>
 <body>
-{% block body %}{% endblock %}
+<div class="l--flex" style="height: 100vh; overflow: hidden">
+  <nav aria-label="リポジトリ一覧"
+       style="width: 220px; flex-shrink: 0; border-right: 1px solid var(--divider);
+              display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; background: var(--base-2); overflow-y: auto">
+    <p class="-fw:bold -fz:s -c:text-2" style="margin: 0">リポジトリ</p>
+    <ul style="list-style: none; padding: 0; margin: 0; flex: 1; display: flex; flex-direction: column; gap: 0.2rem">
+      {% for repo in repos %}
+      <li>
+        <a href="/repos/{{ repo.id }}/graph"
+           class="repo-link{% if repo.id == current_repo_id %} is-active{% endif %}"
+           {% if repo.id == current_repo_id %}aria-current="page"{% endif %}
+           title="{{ repo.name }}">{{ repo.name }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/api/repos" class="l--stack -g:8"
+          _="on submit toggle @disabled on <button/>">
+      <label class="l--stack -g:4" style="font-size: 0.8rem">
+        パスを追加
+        <input name="path" type="text" required autocomplete="off"
+               placeholder="/path/to/repo"
+               style="width: 100%; padding: 0.3rem 0.4rem; font-size: 0.8rem"/>
+      </label>
+      <button type="submit" style="font-size: 0.8rem">追加</button>
+    </form>
+  </nav>
+  <div style="flex: 1; min-width: 0; overflow: hidden">
+    {% block body %}{% endblock %}
+  </div>
+</div>
 </body>
 </html>

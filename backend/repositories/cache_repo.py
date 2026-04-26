@@ -96,6 +96,18 @@ def parents_by_child(session: Session, child_hashes: list[str]) -> dict[str, lis
     return result
 
 
+def list_repositories(session: Session) -> list[Repository]:
+    """登録済みリポジトリを name 昇順で全件返す。
+
+    Args:
+        session: DB セッション。
+
+    Returns:
+        Repository のリスト。0 件のときは空リスト。
+    """
+    return list(session.exec(select(Repository).order_by(Repository.name)).all())
+
+
 def get_repository_by_path(session: Session, path: str) -> Repository | None:
     """パスでリポジトリを取得する。
 

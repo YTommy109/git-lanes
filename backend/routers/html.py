@@ -23,9 +23,15 @@ router = APIRouter(tags=["html"])
 
 
 @router.get("/", response_class=HTMLResponse)
-async def welcome(request: Request) -> HTMLResponse:
+async def welcome(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
     """ウェルカム画面を返す。"""
-    return templates.TemplateResponse(request, "welcome.html", {})
+    repos = cache_repo.list_repositories(session)
+    return templates.TemplateResponse(
+        request, "welcome.html", {"repos": repos, "current_repo_id": None}
+    )
 
 
 def _build_graph_context(
@@ -86,6 +92,8 @@ async def graph_page(
     branches = cache_repo.list_branches(session, rid)
     nodes, edges, branch_lanes = graph_layout.build_multi_lane_layout(rows, parents, branches)
     context = _build_graph_context(rid, rec, nodes, edges, branch_lanes)
+    context["repos"] = cache_repo.list_repositories(session)
+    context["current_repo_id"] = rid
     return templates.TemplateResponse(request, "graph.html", context)
 
 

@@ -310,3 +310,26 @@ def test_list_branches_ブランチなしは空リスト(session):
 
     # --- Assert ---
     assert result == []
+
+
+# ── list_repositories ──────────────────────────────────────
+
+
+def test_list_repositories_複数件をname昇順で返す(session):
+    # --- Arrange ---
+    cache_repo.insert_repository(session, "r2", "/path/r2", "zeta")
+    cache_repo.insert_repository(session, "r1", "/path/r1", "alpha")
+
+    # --- Act ---
+    result = cache_repo.list_repositories(session)
+
+    # --- Assert ---
+    assert [r.name for r in result] == ["alpha", "zeta"]
+
+
+def test_list_repositories_0件は空リストを返す(session):
+    # --- Act ---
+    result = cache_repo.list_repositories(session)
+
+    # --- Assert ---
+    assert result == []
