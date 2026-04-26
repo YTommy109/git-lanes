@@ -9,7 +9,7 @@ from backend.repositories import cache_repo
 from backend.repositories.git_repo import (
     iter_local_branches,
     open_repository,
-    walk_commits_from_head,
+    walk_commits_from_branches,
 )
 
 
@@ -32,10 +32,22 @@ def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool
     return rec.cached_head != head_hex
 
 
+def _has_missing_tips(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
+    """ブランチ先端コミットが DB に未収録なら True を返す。"""
+    for name in repo.branches.local:
+        branch = repo.branches.local.get(name)
+        if branch is None:
+            continue
+        tip = branch.peel(pygit2.Commit)
+        if cache_repo.get_commit(session, repo_id, str(tip.id)) is None:
+            return True
+    return False
+
+
 def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     """必要ならリポジトリ内容をフル再同期する。
 
-    HEAD が前回同期時と同じでコミットが残っていれば何もしない。
+    HEAD が変わらなくても未収録のブランチ先端コミットがあれば再同期する。
 
     Args:
         session: DB セッション。
@@ -44,7 +56,10 @@ def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     """
     repo = open_repository(repo_path)
     head_hex = _head_hex_or_none(repo)
-    if not _should_resync(session, repo_id, head_hex):
+    needs_sync = _should_resync(session, repo_id, head_hex) or _has_missing_tips(
+        session, repo_id, repo
+    )
+    if not needs_sync:
         return
     cache_repo.purge_graph_data(session, repo_id)
     if head_hex is None:
@@ -67,7 +82,7 @@ def _sync_commits_and_branches(
         repo: pygit2 リポジトリ。
         head_hex: 現在の HEAD ハッシュ。
     """
-    commits = walk_commits_from_head(repo)
+    commits = walk_commits_from_branches(repo)
     # 親ハッシュへの外部キー制約を満たすため、コミットを先に全件挿入する。
     for c in commits:
         message_line = c.message.split("\n", 1)[0]

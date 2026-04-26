@@ -20,4 +20,5 @@ def test_register_redirects_and_graph_renders(tmp_path, monkeypatch):
     location = response.headers["location"]
     page = client.get(location)
     assert page.status_code == 200
-    assert page.text.count("commit-node") == 2
+    # class="commit-node" が 2 ノード分存在することを確認する
+    assert page.text.count('class="commit-node"') == 2

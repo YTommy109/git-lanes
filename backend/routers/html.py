@@ -33,6 +33,7 @@ def _build_graph_context(
     rec: Repository,
     nodes: list,
     edges: list,
+    branch_lanes: list,
 ) -> dict:
     """グラフ画面のテンプレートコンテキストを構築する。
 
@@ -41,18 +42,27 @@ def _build_graph_context(
         rec: リポジトリレコード。
         nodes: レイアウト済みノード一覧。
         edges: エッジ一覧。
+        branch_lanes: ブランチレーン一覧。
 
     Returns:
         Jinja2 テンプレートに渡すコンテキスト辞書。
     """
-    row_spacing = 52.0
+    from backend.services.graph_layout import LANE_COLORS, ROW_SPACING, build_edge_segments
+
+    max_lane = max((bl.lane for bl in branch_lanes), default=0)
+    svg_width = max(320, max_lane * 70 + 300)
+    svg_height = 80.0 + max(len(nodes), 1) * ROW_SPACING
     return {
         "repo_id": rid,
         "repo_name": rec.name,
         "nodes": nodes,
-        "edges": edges,
+        "edge_segments": build_edge_segments(nodes, edges),
+        "branch_lanes": branch_lanes,
         "position_by_hash": {n.commit.hash: n for n in nodes},
-        "svg_height": 80.0 + max(len(nodes), 1) * row_spacing,
+        "svg_width": svg_width,
+        "svg_height": svg_height,
+        "lane_colors": LANE_COLORS,
+        "row_spacing": ROW_SPACING,
     }
 
 
@@ -73,8 +83,9 @@ async def graph_page(
         raise HTTPException(status_code=400, detail="Git リポジトリを開けません") from exc
     rows = cache_repo.list_recent_commits(session, rid, 50)
     parents = cache_repo.parents_by_child(session, [r.hash for r in rows])
-    nodes, edges = graph_layout.build_single_lane_layout(rows, parents)
-    context = _build_graph_context(rid, rec, nodes, edges)
+    branches = cache_repo.list_branches(session, rid)
+    nodes, edges, branch_lanes = graph_layout.build_multi_lane_layout(rows, parents, branches)
+    context = _build_graph_context(rid, rec, nodes, edges, branch_lanes)
     return templates.TemplateResponse(request, "graph.html", context)
 
 

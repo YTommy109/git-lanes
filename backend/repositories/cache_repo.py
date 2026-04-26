@@ -232,6 +232,19 @@ def insert_parent_row(session: Session, commit_hash: str, parent_hash: str, posi
     session.merge(CommitParent(commit_hash=commit_hash, parent_hash=parent_hash, position=position))
 
 
+def list_branches(session: Session, repo_id: str) -> list[Branch]:
+    """リポジトリの全ブランチを返す。
+
+    Args:
+        session: DB セッション。
+        repo_id: リポジトリ ID。
+
+    Returns:
+        Branch のリスト。
+    """
+    return list(session.exec(select(Branch).where(Branch.repo_id == repo_id)).all())
+
+
 def insert_branch_row(
     session: Session, repo_id: str, name: str, tip_hash: str, is_remote: int
 ) -> None:

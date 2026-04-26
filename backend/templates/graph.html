@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block title %}{{ repo_name }} — グラフ{% endblock %}
 {% block body %}
+<div id="commit-tooltip"
+     style="display:none;position:fixed;background:#222;color:#eee;padding:4px 10px;border-radius:4px;font-size:12px;pointer-events:none;z-index:1000;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 <main class="l--flex" style="min-height: 100vh">
   <section class="-p:20 -ov:auto -bgc:white" aria-label="コミットグラフ"
            style="flex: 2; border-right: 1px solid var(--divider)">
     <header>
       <h1>{{ repo_name }}</h1>
-      <p class="-c:text-2 -fz:s">直近 50 コミット（単レーン表示）</p>
+      <p class="-c:text-2 -fz:s">直近 50 コミット</p>
     </header>
     {% if not nodes %}
       <p>コミットがありません。</p>
@@ -15,37 +17,65 @@
         xmlns="http://www.w3.org/2000/svg"
         width="100%"
         height="{{ svg_height }}"
-        viewBox="0 0 320 {{ svg_height }}"
+        viewBox="0 0 {{ svg_width }} {{ svg_height }}"
         role="img"
         aria-label="コミット履歴"
       >
-        {% for e in edges %}
-          {% set c = position_by_hash[e.child_hash] %}
-          {% set p = position_by_hash[e.parent_hash] %}
+        {# ブランチ名ラベル（斜め -40°・下端 Y=95 で下揃え） #}
+        {% for bl in branch_lanes %}
+          {% set color = lane_colors[bl.lane % 8] %}
+          <text
+            transform="rotate(-40,{{ bl.x }},125)"
+            x="{{ bl.x }}"
+            y="125"
+            font-size="11"
+            fill="{{ color }}"
+            font-weight="bold"
+          >{{ bl.name }}</text>
+        {% endfor %}
+
+        {# 波線：独自コミットなしブランチ（シンボル丸 → 縦波線 → 斜め波線） #}
+        {% for bl in branch_lanes %}
+          {% if not bl.has_unique_commits and bl.connect_hash in position_by_hash %}
+            {% set color = lane_colors[bl.lane % 8] %}
+            {% set target = position_by_hash[bl.connect_hash] %}
+            {% set bend_y = target.y - row_spacing %}
+            <line x1="{{ bl.x }}" y1="145" x2="{{ bl.x }}" y2="{{ bend_y }}"
+                  stroke="{{ color }}" stroke-width="2" stroke-dasharray="5,4"/>
+            <line x1="{{ bl.x }}" y1="{{ bend_y }}" x2="{{ target.x }}" y2="{{ target.y }}"
+                  stroke="{{ color }}" stroke-width="2" stroke-dasharray="5,4"/>
+            <circle cx="{{ bl.x }}" cy="145" r="5" fill="{{ color }}"/>
+          {% endif %}
+        {% endfor %}
+
+        {# エッジ（コミット間の接続線） #}
+        {% for seg in edge_segments %}
+          {% set color = lane_colors[seg.lane % 8] %}
           <line
-            x1="{{ c.x }}"
-            y1="{{ c.y }}"
-            x2="{{ p.x }}"
-            y2="{{ p.y }}"
-            stroke="var(--divider)"
-            stroke-width="2"
+            x1="{{ seg.x1 }}" y1="{{ seg.y1 }}"
+            x2="{{ seg.x2 }}" y2="{{ seg.y2 }}"
+            stroke="{{ color }}"
+            stroke-width="2.5"
           />
         {% endfor %}
+
+        {# コミット円 #}
         {% for node in nodes %}
+          {% set color = lane_colors[node.lane % 8] %}
           <g
             class="commit-node"
+            data-msg="{{ node.commit.message.split('\n')[0] }}"
             hx-get="/repos/{{ repo_id }}/commits/{{ node.commit.hash }}/detail"
             hx-target="#commit-detail"
             hx-swap="innerHTML"
-            _="on click remove .selected from .commit-node then add .selected to me"
+            _="on mouseenter set #commit-tooltip.textContent to my @data-msg
+                             then set #commit-tooltip.style.display to 'block'
+                             then set #commit-tooltip.style.top to (event.clientY - 36) + 'px'
+                             then set #commit-tooltip.style.left to (event.clientX + 12) + 'px'
+               on mouseleave set #commit-tooltip.style.display to 'none'
+               on click remove .selected from .commit-node then add .selected to me"
           >
-            <circle cx="{{ node.x }}" cy="{{ node.y }}" r="10"/>
-            <text
-              x="{{ node.x + 18 }}"
-              y="{{ node.y + 4 }}"
-              font-size="12"
-              fill="var(--text)"
-            >{{ node.commit.message.split('\n')[0] | truncate(35, killwords=True, end='…') }}</text>
+            <circle cx="{{ node.x }}" cy="{{ node.y }}" r="8" fill="{{ color }}"/>
           </g>
         {% endfor %}
       </svg>

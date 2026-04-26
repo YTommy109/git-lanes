@@ -281,3 +281,32 @@ def test_insert_branch_row_tip_hashが更新される(session):
     ).first()
     assert branch is not None
     assert branch.tip_hash == "b" * 40
+
+
+# ── list_branches ──────────────────────────────────────────
+
+
+def test_list_branches_登録済みブランチを返す(session):
+    # --- Arrange ---
+    _add_repo(session)
+    _add_commit(session, "r1", "a" * 40)
+    cache_repo.insert_branch_row(session, "r1", "main", "a" * 40, 0)
+    cache_repo.insert_branch_row(session, "r1", "feat/x", "a" * 40, 0)
+    session.commit()
+
+    # --- Act ---
+    result = cache_repo.list_branches(session, "r1")
+
+    # --- Assert ---
+    assert {b.name for b in result} == {"main", "feat/x"}
+
+
+def test_list_branches_ブランチなしは空リスト(session):
+    # --- Arrange ---
+    _add_repo(session)
+
+    # --- Act ---
+    result = cache_repo.list_branches(session, "r1")
+
+    # --- Assert ---
+    assert result == []

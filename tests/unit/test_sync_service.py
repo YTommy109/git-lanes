@@ -38,3 +38,20 @@ def test_sync_repository_handles_empty_repo(session, tmp_path):
 
     # --- Assert ---
     assert cache_repo.count_commits(session, repo_id) == 0
+
+
+def test_sync_repository_非HEADブランチのコミットも同期される(session, tmp_path):
+    # --- Arrange ---
+    # make_two_branch_repo: main(HEAD) に 2 コミット、feat に 1 固有コミット
+    from tests.support.git_repo_fixture import make_two_branch_repo
+
+    repo_path = make_two_branch_repo(tmp_path / "repo")
+    repo_id = str(uuid.uuid4())
+    cache_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+
+    # --- Act ---
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+
+    # --- Assert ---
+    # first(共有) + second(main) + feat_commit(feat) = 3 件
+    assert cache_repo.count_commits(session, repo_id) == 3
