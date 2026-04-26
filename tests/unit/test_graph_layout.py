@@ -4,6 +4,7 @@ from backend.models import Branch, Commit
 from backend.services.graph_layout import (
     LANE_COLORS,
     BranchLane,
+    build_edge_segments,
     build_multi_lane_layout,
     build_single_lane_layout,
 )
@@ -190,3 +191,62 @@ def test_build_multi_lane_layout_空データは空を返す():
     assert nodes == []
     assert edges == []
     assert branch_lanes == []
+
+
+def test_build_multi_lane_layout_最長チェーンのブランチがlane0():
+    # --- Arrange ---
+    # main の tip は 'a'（row2）、feat の tip は 'c'（row0）
+    # _chain_length: main(a→終) = 1、feat(c→b→a→終) = 3
+    # → feat が最長 → lane=0、main が lane=1 になるべき
+    rows = [_make_commit("c", 3), _make_commit("b", 2), _make_commit("a", 1)]
+    parents = {"c" * 40: ["b" * 40], "b" * 40: ["a" * 40]}
+    branches = [
+        _make_branch("main", "a"),  # main の tip は最古コミット
+        _make_branch("feat", "c"),  # feat の tip は最新コミット
+    ]
+
+    # --- Act ---
+    nodes, edges, branch_lanes = build_multi_lane_layout(rows, parents, branches)
+
+    # --- Assert ---
+    lane_map = {bl.name: bl.lane for bl in branch_lanes}
+    assert lane_map["feat"] == 0  # feat が最長 → lane=0
+    assert lane_map["main"] == 1  # main は短い → lane=1
+
+
+def test_build_edge_segments_同レーンは縦線1本():
+    # --- Arrange ---
+    rows = [_make_commit("b", 2), _make_commit("a", 1)]
+    parents = {"b" * 40: ["a" * 40]}
+    branches = [_make_branch("main", "b")]
+    nodes, edges, _ = build_multi_lane_layout(rows, parents, branches)
+
+    # --- Act ---
+    segs = build_edge_segments(nodes, edges)
+
+    # --- Assert ---
+    assert len(segs) == 1
+    assert segs[0].x1 == segs[0].x2  # 縦線: x 座標が同じ
+
+
+def test_build_edge_segments_異レーンは縦線と斜め線の2本():
+    # --- Arrange ---
+    rows = [_make_commit("c", 3), _make_commit("b", 2), _make_commit("a", 1)]
+    parents = {
+        "c" * 40: ["b" * 40],
+        "b" * 40: ["a" * 40],
+        "x" * 40: ["b" * 40],
+    }
+    branches = [_make_branch("main", "c"), _make_branch("feat", "x")]
+    # feat の tip(x) は rows に含まれないため、feat→main の接続エッジは存在しない
+    # ここでは x を rows に追加してテスト
+    rows_with_x = [_make_commit("x", 4)] + rows  # x が最新
+    nodes2, edges2, _ = build_multi_lane_layout(rows_with_x, parents, branches)
+
+    # --- Act ---
+    segs = build_edge_segments(nodes2, edges2)
+
+    # --- Assert ---
+    # 少なくとも cross-lane edge が 1 本以上ある（斜め線セグメント）
+    diagonal_segs = [s for s in segs if s.x1 != s.x2]
+    assert len(diagonal_segs) >= 1

@@ -47,7 +47,7 @@ def _build_graph_context(
     Returns:
         Jinja2 テンプレートに渡すコンテキスト辞書。
     """
-    from backend.services.graph_layout import LANE_COLORS, ROW_SPACING
+    from backend.services.graph_layout import LANE_COLORS, ROW_SPACING, build_edge_segments
 
     max_lane = max((bl.lane for bl in branch_lanes), default=0)
     svg_width = max(320, max_lane * 70 + 300)
@@ -56,12 +56,13 @@ def _build_graph_context(
         "repo_id": rid,
         "repo_name": rec.name,
         "nodes": nodes,
-        "edges": edges,
+        "edge_segments": build_edge_segments(nodes, edges),
         "branch_lanes": branch_lanes,
         "position_by_hash": {n.commit.hash: n for n in nodes},
         "svg_width": svg_width,
         "svg_height": svg_height,
         "lane_colors": LANE_COLORS,
+        "row_spacing": ROW_SPACING,
     }
 
 
