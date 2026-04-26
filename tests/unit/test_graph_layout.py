@@ -45,6 +45,59 @@ def test_build_single_lane_layout_builds_edges_within_visible_set():
     assert edges[0].parent_hash == rows[1].hash
 
 
+def test_build_single_lane_layout_sorts_by_topology_not_timestamp():
+    # --- Arrange ---
+    # クロックスキュー: feature コミットがマージコミットより後の時刻を持つが、トポロジー上は親
+    merge_hash = "m" * 40
+    feature_hash = "f" * 40
+    base_hash = "b" * 40
+
+    merge_commit = Commit(
+        hash=merge_hash,
+        short_hash="mmmmmmm",
+        message="merge",
+        author_name="a",
+        author_email="a@b.c",
+        committed_at=2,
+        repo_id=_REPO_ID,
+    )
+    feature_commit = Commit(
+        hash=feature_hash,
+        short_hash="fffffff",
+        message="feature",
+        author_name="a",
+        author_email="a@b.c",
+        committed_at=3,  # 親なのに時刻が新しい
+        repo_id=_REPO_ID,
+    )
+    base_commit = Commit(
+        hash=base_hash,
+        short_hash="bbbbbbb",
+        message="base",
+        author_name="a",
+        author_email="a@b.c",
+        committed_at=1,
+        repo_id=_REPO_ID,
+    )
+
+    # 時刻降順で渡す: feature(3) > merge(2) > base(1)
+    rows = [feature_commit, merge_commit, base_commit]
+    parents = {
+        merge_hash: [base_hash, feature_hash],
+        feature_hash: [base_hash],
+    }
+
+    # --- Act ---
+    nodes, edges = build_single_lane_layout(rows, parents)
+
+    # --- Assert ---
+    node_y = {n.commit.hash: n.y for n in nodes}
+    # merge は feature の子なので、merge が先（小さい Y）に表示される
+    assert node_y[merge_hash] < node_y[feature_hash]
+    # feature は base の子なので、feature が先（小さい Y）に表示される
+    assert node_y[feature_hash] < node_y[base_hash]
+
+
 def _make_commit(hash_prefix: str, at: int) -> Commit:
     """テスト用 Commit を生成する。"""
     h = hash_prefix * 40

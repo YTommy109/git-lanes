@@ -23,23 +23,30 @@ def open_repository(repo_path: str) -> pygit2.Repository:
     return pygit2.Repository(repo_path)
 
 
-def walk_commits_from_head(repo: pygit2.Repository) -> list[pygit2.Commit]:
-    """HEAD からトポロジカル順にコミットを列挙する。
+def walk_commits_from_branches(repo: pygit2.Repository) -> list[pygit2.Commit]:
+    """全ローカルブランチの先端からトポロジカル順にコミットを列挙する。
 
-    空リポジトリの場合は空リストを返す。
+    HEAD から到達できないブランチのコミットも含む。
+    空リポジトリまたはブランチが存在しない場合は空リストを返す。
 
     Args:
         repo: 対象リポジトリ。
 
     Returns:
-        新しいコミットが先頭になるよう ``GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME`` で走査した一覧。
+        ``GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME`` で走査した一覧。
     """
-    try:
-        tip_oid = repo.head.target
-    except (KeyError, pygit2.GitError):
+    tips = []
+    for name in repo.branches.local:
+        branch = repo.branches.local.get(name)
+        if branch is not None:
+            tips.append(branch.peel(pygit2.Commit).id)
+    if not tips:
         return []
     sort = SortMode.TOPOLOGICAL | SortMode.TIME
-    return list(repo.walk(tip_oid, sort))
+    walker = repo.walk(tips[0], sort)
+    for oid in tips[1:]:
+        walker.push(oid)
+    return list(walker)
 
 
 def iter_local_branches(repo: pygit2.Repository) -> Iterator[tuple[str, str]]:

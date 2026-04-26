@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from backend.models import Branch, Commit
+from backend.services.topo_sort import topological_sort
 
 
 @dataclass(frozen=True)
@@ -57,10 +58,10 @@ class BranchLane:
 def build_single_lane_layout(
     rows: list[Commit], parents: dict[str, list[str]]
 ) -> tuple[list[LayoutNode], list[LayoutEdge]]:
-    """上から新しい順のコミット列に縦方向の座標を割り当てる。
+    """コミット列にトポロジカル順で縦方向の座標を割り当てる。
 
     Args:
-        rows: ``committed_at`` 降順で並んだコミット。
+        rows: コミット一覧（順序不問）。
         parents: 子ハッシュをキーとする親ハッシュのリスト。
 
     Returns:
@@ -69,10 +70,13 @@ def build_single_lane_layout(
     spacing = 52.0
     margin_top = 36.0
     x = 56.0
+    sorted_rows = topological_sort(rows, parents)
     visible = {r.hash for r in rows}
-    nodes = [LayoutNode(commit=r, x=x, y=margin_top + i * spacing) for i, r in enumerate(rows)]
+    nodes = [
+        LayoutNode(commit=r, x=x, y=margin_top + i * spacing) for i, r in enumerate(sorted_rows)
+    ]
     edges: list[LayoutEdge] = []
-    for r in rows:
+    for r in sorted_rows:
         for ph in parents.get(r.hash, []):
             if ph in visible:
                 edges.append(LayoutEdge(child_hash=r.hash, parent_hash=ph))
