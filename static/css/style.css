@@ -22,3 +22,24 @@
   margin: 0;
   word-break: break-all;
 }
+
+/* サイドバーリポジトリリンク */
+.repo-link {
+  display: block;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-link:hover {
+  background: var(--base-3);
+}
+
+.repo-link.is-active {
+  background: var(--blue);
+  color: white;
+}
