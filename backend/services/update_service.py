@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 import threading
 import time
 from importlib.metadata import PackageNotFoundError
@@ -13,7 +12,6 @@ import httpx
 
 GITHUB_API_URL = "https://api.github.com/repos/YTommy109/git-lanes/releases/latest"
 _CACHE_TTL = 3600
-_SCRIPT_PATH = Path("/tmp/git-lanes-updater.sh")
 
 try:
     _CURRENT_VERSION = _pkg_version("git-lanes")
@@ -108,39 +106,3 @@ def download_update(url: str) -> None:
     if _download_state["status"] == "downloading":
         return
     threading.Thread(target=_do_download, args=(url,), daemon=True).start()
-
-
-def _get_app_path() -> Path | None:
-    """PyInstaller 環境での .app バンドルパスを返す。
-
-    Returns:
-        .app バンドルの Path。開発環境（sys.frozen が偽）なら None。
-    """
-    if not getattr(sys, "frozen", False):
-        return None
-    # sys.executable = /Applications/Git Lanes.app/Contents/MacOS/Git Lanes
-    return Path(sys.executable).parent.parent.parent
-
-
-def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) -> Path:
-    """インストール用シェルスクリプトを /tmp に書き出す。
-
-    Args:
-        app_path: 現在の .app パス（削除対象）。
-        mount_point: DMG のマウントポイント（アンマウント対象）。
-        new_app_src: DMG 内の新しい .app パス（コピー元）。
-
-    Returns:
-        書き出したスクリプトの Path。
-    """
-    script = (
-        "#!/bin/bash\n"
-        "sleep 3\n"
-        f'rm -rf "{app_path}"\n'
-        f'cp -R "{new_app_src}" "{app_path.parent}/"\n'
-        f'hdiutil detach "{mount_point}" -quiet\n'
-        f'open "{app_path}"\n'
-    )
-    _SCRIPT_PATH.write_text(script)
-    _SCRIPT_PATH.chmod(0o755)
-    return _SCRIPT_PATH
