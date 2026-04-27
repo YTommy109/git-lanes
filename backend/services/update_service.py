@@ -4,19 +4,14 @@ from __future__ import annotations
 
 import threading
 import time
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 import httpx
 
+from backend.version import __version__ as _CURRENT_VERSION
+
 GITHUB_API_URL = "https://api.github.com/repos/YTommy109/git-lanes/releases/latest"
 _CACHE_TTL = 3600
-
-try:
-    _CURRENT_VERSION = _pkg_version("git-lanes")
-except PackageNotFoundError:
-    _CURRENT_VERSION = "0.0.0"
 
 _cache: dict = {"checked_at": None, "result": None}
 _download_state: dict = {"percent": 0, "status": "idle", "dmg_path": None}

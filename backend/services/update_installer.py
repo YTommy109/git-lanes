@@ -58,12 +58,13 @@ def install_update() -> None:
         return
     try:
         result = subprocess.run(
-            ["hdiutil", "attach", dmg_path, "-nobrowse"],
+            ["hdiutil", "attach", dmg_path, "-nobrowse", "-agree"],
             capture_output=True,
             text=True,
             check=True,
+            timeout=60,
         )
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return
     last_line = result.stdout.strip().split("\n")[-1]
     mount_point = Path(last_line.split("\t")[-1].strip())
