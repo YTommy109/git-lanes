@@ -1,0 +1,24 @@
+<div id="update-banner"
+     style="padding: 0.5rem 0.75rem; font-size: 0.8rem; border-top: 1px solid var(--divider); background: var(--base-2)"
+     {% if status == "downloading" %}
+     hx-get="/api/update/progress"
+     hx-trigger="every 1s"
+     hx-swap="outerHTML"
+     {% endif %}>
+  {% if status == "downloading" %}
+    <p style="margin: 0 0 0.3rem">ダウンロード中...</p>
+    <progress value="{{ percent }}" max="100" style="width: 100%"></progress>
+    <p style="margin: 0.2rem 0 0; font-size: 0.7rem">{{ percent }}%</p>
+  {% elif status == "done" %}
+    <p style="margin: 0 0 0.4rem">ダウンロード完了</p>
+    <button
+      hx-post="/api/update/install"
+      hx-swap="none"
+      _="on click put 'インストール中...' into my innerHTML then add @disabled to me"
+      style="font-size: 0.75rem; width: 100%">
+      インストールして再起動
+    </button>
+  {% elif status == "error" %}
+    <p style="margin: 0; color: var(--color-caution)">ダウンロードに失敗しました</p>
+  {% endif %}
+</div>
