@@ -54,14 +54,17 @@ def install_update() -> None:
     ダウンロードが完了していない場合も何もせず return する。
     """
     dmg_path = update_service.get_download_state().get("dmg_path")
-    if not dmg_path:
+    if not dmg_path or not Path(dmg_path).exists():
         return
-    result = subprocess.run(
-        ["hdiutil", "attach", dmg_path, "-nobrowse"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    try:
+        result = subprocess.run(
+            ["hdiutil", "attach", dmg_path, "-nobrowse"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return
     last_line = result.stdout.strip().split("\n")[-1]
     mount_point = Path(last_line.split("\t")[-1].strip())
     apps = list(mount_point.glob("*.app"))

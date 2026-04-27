@@ -52,18 +52,19 @@ def test_write_updater_script_内容検証(tmp_path):
 
 def test_install_update_開発環境ではスキップ(tmp_path):
     # --- Arrange ---
-    svc._download_state.update(
-        {"percent": 100, "status": "done", "dmg_path": str(tmp_path / "test.dmg")}
-    )
+    dmg_file = tmp_path / "test.dmg"
+    dmg_file.touch()  # ファイル存在確認を通過させるために作成する
+    svc._download_state.update({"percent": 100, "status": "done", "dmg_path": str(dmg_file)})
     mock_run_result = MagicMock()
     mock_run_result.stdout = "/dev/disk4\tApple_HFS\t/Volumes/Test\n"
 
     # --- Act ---
     # _get_app_path() が None を返す（開発環境）ので sys.exit は呼ばれない
     with patch.object(sys, "frozen", False, create=True):
-        with patch("subprocess.run", return_value=mock_run_result):
+        with patch("subprocess.run", return_value=mock_run_result) as mock_run:
             with patch.object(Path, "glob", return_value=[Path("/Volumes/Test/App.app")]):
                 installer.install_update()  # sys.exit(0) を呼ばずに return する
 
     # --- Assert ---
-    # 例外なく完了していれば OK
+    mock_run.assert_called_once()  # hdiutil は呼ばれる
+    # sys.exit が呼ばれていないことはここまで到達したことで確認済み
