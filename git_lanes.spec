@@ -75,7 +75,7 @@ app = BUNDLE(
     name="Git Lanes.app",
     bundle_identifier="com.degino.git-lanes",
     info_plist={
-        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleShortVersionString": "0.1.1",
         "NSHighResolutionCapable": True,
     },
 )
