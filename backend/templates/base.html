@@ -34,6 +34,11 @@
       </label>
       <button type="submit" style="font-size: 0.8rem">追加</button>
     </form>
+    <div id="update-banner"
+         hx-get="/api/update/check"
+         hx-trigger="load"
+         hx-swap="outerHTML">
+    </div>
   </nav>
   <div style="flex: 1; min-width: 0; overflow: hidden">
     {% block body %}{% endblock %}

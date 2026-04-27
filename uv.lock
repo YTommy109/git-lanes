@@ -210,10 +210,11 @@ wheels = [
 
 [[package]]
 name = "git-lanes"
-version = "0.1.2"
+version = "0.1.4"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "jinja2" },
     { name = "pygit2" },
     { name = "python-multipart" },
@@ -225,7 +226,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "playwright" },
     { name = "pre-commit" },
     { name = "pyinstaller" },
@@ -240,6 +240,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.136" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "pygit2", specifier = ">=1.19" },
     { name = "python-multipart", specifier = ">=0.0.26" },
@@ -251,7 +252,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx" },
     { name = "playwright" },
     { name = "pre-commit" },
     { name = "pyinstaller", specifier = ">=6.20.0" },

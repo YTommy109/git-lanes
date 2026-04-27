@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.db import create_db_and_tables
-from backend.routers import api, html
+from backend.routers import api, html, update
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -24,6 +24,7 @@ app = FastAPI(title="Git Lanes", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 app.include_router(html.router)
 app.include_router(api.router)
+app.include_router(update.router)
 
 
 @app.get("/health")
