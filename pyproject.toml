@@ -66,6 +66,7 @@ current_version = "0.1.0"
 commit = true
 tag = true
 tag_name = "v{new_version}"
+message = "chore: バージョンを {current_version} から {new_version} に更新する"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
