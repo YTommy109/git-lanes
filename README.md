@@ -59,6 +59,21 @@ uv run task migrate    # DB マイグレーション（Atlas）
 - 実装・テスト用スキル: `.cursor/skills/`
 - エディタ共有設定: `.vscode/settings.json`
 
+## リリース手順
+
+```bash
+uvx bump-my-version bump patch   # patch バージョンを上げる（minor / major も同様）
+git push && git push --tags      # GitHub Actions が発火して DMG 付き Release を作成
+```
+
+バージョン番号の種類:
+
+| コマンド | 変更例 |
+| --- | --- |
+| `bump patch` | `0.1.0` → `0.1.1` |
+| `bump minor` | `0.1.0` → `0.2.0` |
+| `bump major` | `0.1.0` → `1.0.0` |
+
 ## ライセンス
 
 MIT

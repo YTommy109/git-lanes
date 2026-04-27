@@ -19,7 +19,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - name: 依存パッケージをインストールする
-        run: uv sync --group dev
+        run: uv sync --group dev --frozen
 
       - name: アプリをビルドする
         run: uv run task build
