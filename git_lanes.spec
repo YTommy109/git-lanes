@@ -73,6 +73,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name="Git Lanes.app",
+    icon=str(ROOT / "resources" / "git-lanes.icns"),
     bundle_identifier="com.degino.git-lanes",
     info_plist={
         "CFBundleShortVersionString": "0.1.1",
