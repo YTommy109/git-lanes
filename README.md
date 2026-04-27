@@ -1,92 +1,35 @@
 # Git Lanes
 
-Git リポジトリのブランチ構造を可視化する Mac デスクトップアプリ。
+Git リポジトリのブランチ構造を直感的に可視化する、Mac デスクトップアプリです。
 
-## 技術スタック
+## 主な機能
 
-| 役割 | 技術 |
-| --- | --- |
-| バックエンド | Python 3.12+ / FastAPI |
-| Git 操作 | pygit2 |
-| FS 監視 | watchdog |
-| DB | SQLite（起動時 DDL + Atlas 宣言型 `schema.hcl`） |
-| SVG / HTML 生成 | Jinja2 |
-| フロントエンド | htmx + hyperscript |
-| CSS フレームワーク | LismCSS |
-| E2E テスト | Playwright（Python） |
-| デスクトップシェル | pywebview |
+- **マルチレーン・グラフ表示**: ブランチの分岐と合流を美しく、分かりやすく表示します。
+- **高速な動作**: 大規模なリポジトリでも、キャッシュと差分更新によりストレスなく閲覧できます。
+- **リポジトリ管理**: よく使うリポジトリを登録し、サイドバーから素早く切り替えられます。
+- **コミット詳細表示**: ノードを選択するだけで、コミットメッセージや変更内容を確認できます。
 
-## 必要環境
+## 使い方
 
-| ツール | インストール方法 |
-| --- | --- |
-| uv | `brew install uv` |
-| atlas | `brew install ariga/tap/atlas` |
-| markdownlint-cli2 | `brew install markdownlint-cli2` |
+1. アプリを起動します。
+2. 初回起動時は、可視化したいローカル Git リポジトリのディレクトリを登録します。
+3. グラフ上のノードをクリックすると、右ペインにコミットの詳細が表示されます。
 
-## セットアップ
+## macOS での起動について（ Gatekeeper 対応）
 
-```bash
-uv sync
-uv run playwright install chromium
-pre-commit install
-pre-commit install --hook-type post-checkout
-```
+Git Lanes は Apple の公証（Notarization）を受けていないため、初回起動時に macOS の Gatekeeper によってブロックされる場合があります。その場合は以下の手順で起動してください。
 
-## 開発コマンド
+1. `Git Lanes.app` をダブルクリックし、ブロックされたら「キャンセル」または「終了」を押します。
+2. **「システム設定」→「プライバシーとセキュリティ」** を開きます。
+3. 「"Git Lanes" は開発元を確認できないため…」というメッセージの横にある **「このまま開く」** をクリックします。
+4. 再度確認ダイアログが出たら「開く」を選択します。
 
-```bash
-uv run task dev        # FastAPI 開発サーバー起動（http://localhost:8000）
-uv run task test       # 単体・結合テスト（pytest）
-uv run task test:e2e   # E2E テスト（Playwright）
-uv run task lint       # Lint（ruff）
-uv run task format     # フォーマット（ruff）
-uv run task typecheck  # 型チェック（ty）
-uv run task migrate    # DB マイグレーション（Atlas）
-```
+> ※ 2回目以降は通常通りダブルクリックで起動できます。
 
-## 最小縦スライス（Web UI）
+## 開発者の方へ
 
-1. `uv run task dev` でサーバーを起動する。
-2. ブラウザで `http://127.0.0.1:8000/` を開き、ローカル Git リポジトリの**ディレクトリパス**をフォームに入力して送信する。
-3. グラフ画面でコミットノードをクリックすると、htmx で右ペインに詳細が表示される。
-
-テストや E2E では SQLite を作業用ディレクトリに置くため、**`GIT_LANES_DATA_DIR`**（絶対パス推奨）を設定する。`tests/e2e/conftest.py` のサーバ起動でも同変数を渡している。
-
-## Cursor 向け
-
-- プロジェクトルール: `.cursor/rules/*.mdc`
-- 実装・テスト用スキル: `.cursor/skills/`
-- エディタ共有設定: `.vscode/settings.json`
-
-## アプリの起動（署名なし配布版）
-
-Git Lanes は Apple の公証（Notarization）を受けていないため、初回起動時に macOS の Gatekeeper によってブロックされます。
-以下のいずれかの方法で起動してください。
-
-1. `Git Lanes.app` をダブルクリックすると、Gatekeeper によってブロックされます。
-2. **「システム設定」→「プライバシーとセキュリティ」** を開く。
-3. 「"Git Lanes" は開発元を確認できないため…」というメッセージの横にある **「このまま開く」** をクリックする。
-
-> 2 回目以降はダブルクリックで起動できます。
-
----
-
-## リリース手順
-
-```bash
-uvx bump-my-version bump patch   # patch バージョンを上げる（minor / major も同様）
-git push && git push --tags      # GitHub Actions が発火して DMG 付き Release を作成
-```
-
-バージョン番号の種類:
-
-| コマンド | 変更例 |
-| --- | --- |
-| `bump patch` | `0.1.0` → `0.1.1` |
-| `bump minor` | `0.1.0` → `0.2.0` |
-| `bump major` | `0.1.0` → `1.0.0` |
+セットアップや開発用コマンドについては、[開発者ガイド](docs/development.md) を参照してください。
 
 ## ライセンス
 
-MIT
+[MIT](LICENSE)
