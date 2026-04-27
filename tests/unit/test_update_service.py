@@ -58,3 +58,34 @@ def test_check_update_キャッシュが効く():
 
     # --- Assert ---
     assert mock_get.call_count == 1
+
+
+def test_download_update_進捗更新(tmp_path):
+    # --- Arrange ---
+    svc._download_state.update({"percent": 0, "status": "idle", "dmg_path": None})
+    chunk_data = [b"a" * 50, b"b" * 50]
+    dmg_dest = tmp_path / "test.dmg"
+
+    class FakeResponse:
+        headers = {"content-length": "100"}
+
+        def raise_for_status(self) -> None:
+            pass
+
+        def iter_bytes(self, chunk_size: int | None = None):
+            return iter(chunk_data)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args) -> bool:
+            return False
+
+    # --- Act ---
+    with patch("backend.services.update_service.httpx.stream", return_value=FakeResponse()):
+        svc._do_download("https://example.com/test.dmg", dest=dmg_dest)
+
+    # --- Assert ---
+    assert svc._download_state["status"] == "done"
+    assert svc._download_state["percent"] == 100
+    assert svc._download_state["dmg_path"] == str(dmg_dest)

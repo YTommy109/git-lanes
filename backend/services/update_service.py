@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
@@ -64,3 +65,45 @@ def check_update() -> dict:
     _cache["checked_at"] = now
     _cache["result"] = result
     return result
+
+
+def get_download_state() -> dict:
+    """ダウンロード状態のコピーを返す。"""
+    return dict(_download_state)
+
+
+def _do_download(url: str, dest: Path | None = None) -> None:
+    """実際のダウンロード処理（バックグラウンドスレッドで実行）。
+
+    Args:
+        url: DMG のダウンロード URL。
+        dest: 保存先パス。None のとき ~/Downloads/GitLanes-update.dmg に保存する。
+    """
+    _download_state.update({"percent": 0, "status": "downloading", "dmg_path": None})
+    dmg_path = dest or Path.home() / "Downloads" / "GitLanes-update.dmg"
+    try:
+        with httpx.stream("GET", url, follow_redirects=True, timeout=300) as resp:
+            resp.raise_for_status()
+            total = int(resp.headers.get("content-length", 0))
+            downloaded = 0
+            with dmg_path.open("wb") as f:
+                for chunk in resp.iter_bytes(chunk_size=65536):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total > 0:
+                        _download_state["percent"] = int(downloaded / total * 100)
+        _download_state["status"] = "done"
+        _download_state["dmg_path"] = str(dmg_path)
+    except Exception:
+        _download_state["status"] = "error"
+
+
+def download_update(url: str) -> None:
+    """ダウンロードをバックグラウンドスレッドで開始する。
+
+    Args:
+        url: DMG のダウンロード URL。
+    """
+    if _download_state["status"] == "downloading":
+        return
+    threading.Thread(target=_do_download, args=(url,), daemon=True).start()
