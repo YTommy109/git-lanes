@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    env:
+      DMG_NAME: GitLanes-${{ github.ref_name }}.dmg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: 依存パッケージをインストールする
+        run: uv sync --group dev --frozen
+
+      - name: アプリをビルドする
+        run: uv run task build
+
+      - name: create-dmg をインストールする
+        run: brew install create-dmg
+
+      - name: DMG を作成する
+        run: |
+          create-dmg \
+            --volname "Git Lanes" \
+            "$DMG_NAME" \
+            "dist/Git Lanes.app"
+
+      - name: GitHub Release を作成して DMG を添付する
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.DMG_NAME }}
