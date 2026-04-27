@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import backend.services.update_service as svc
@@ -89,3 +91,43 @@ def test_download_update_進捗更新(tmp_path):
     assert svc._download_state["status"] == "done"
     assert svc._download_state["percent"] == 100
     assert svc._download_state["dmg_path"] == str(dmg_dest)
+
+
+def test_get_app_path_frozen環境():
+    # --- Arrange ---
+    fake_exe = "/Applications/Git Lanes.app/Contents/MacOS/Git Lanes"
+
+    # --- Act ---
+    with patch.object(sys, "frozen", True, create=True):
+        with patch.object(sys, "executable", fake_exe):
+            result = svc._get_app_path()
+
+    # --- Assert ---
+    assert result == Path("/Applications/Git Lanes.app")
+
+
+def test_get_app_path_開発環境():
+    # --- Arrange / Act ---
+    with patch.object(sys, "frozen", False, create=True):
+        result = svc._get_app_path()
+
+    # --- Assert ---
+    assert result is None
+
+
+def test_write_updater_script_内容検証(tmp_path):
+    # --- Arrange ---
+    app_path = Path("/Applications/Git Lanes.app")
+    mount_point = Path("/Volumes/Git Lanes")
+    new_app_src = Path("/Volumes/Git Lanes/Git Lanes.app")
+    script_path = tmp_path / "git-lanes-updater.sh"
+
+    # --- Act ---
+    with patch.object(svc, "_SCRIPT_PATH", script_path):
+        result = svc._write_updater_script(app_path, mount_point, new_app_src)
+
+    # --- Assert ---
+    content = result.read_text()
+    assert "hdiutil detach" in content
+    assert f'open "{app_path}"' in content
+    assert str(app_path) in content
