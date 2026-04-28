@@ -21,6 +21,8 @@ def make_router(event_bus: EventBus) -> APIRouter:
     router = APIRouter(tags=["graph-events"])
 
     @router.get("/repos/{repo_id}/events")
+    # EventSourceResponse は FastAPI の OpenAPI スキーマ生成と干渉するため
+    # 戻り値型アノテーションを省略する
     async def graph_events(repo_id: str):
         """グラフ更新 SSE ストリームを返す。変化があると event: reload を送信する。"""
         rid = parse_repo_id(repo_id)

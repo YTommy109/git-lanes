@@ -127,3 +127,24 @@ def test_watch_service_同一パスの二重登録を防ぐ(tmp_path, event_bus,
 
     # --- Assert ---
     assert len(svc._watched_paths) == 1
+
+
+def test_watch_service_start_stop_が_observer_を制御する(event_bus, mock_engine):
+    # --- Arrange ---
+    from unittest.mock import patch
+
+    svc = WatchService(event_bus, mock_engine)
+
+    with (
+        patch.object(svc._observer, "start") as mock_start,
+        patch.object(svc._observer, "stop") as mock_stop,
+        patch.object(svc._observer, "join") as mock_join,
+    ):
+        # --- Act ---
+        svc.start()
+        svc.stop()
+
+        # --- Assert ---
+        mock_start.assert_called_once()
+        mock_stop.assert_called_once()
+        mock_join.assert_called_once()

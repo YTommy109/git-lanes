@@ -44,6 +44,14 @@ class GitEventHandler(FileSystemEventHandler):
         """ファイル作成イベントを受け取りデバウンスする。"""
         self._debounce()
 
+    def on_deleted(self, event: FileSystemEvent) -> None:
+        """ファイル削除イベントを受け取りデバウンスする。"""
+        self._debounce()
+
+    def on_moved(self, event: FileSystemEvent) -> None:
+        """ファイル移動イベントを受け取りデバウンスする。"""
+        self._debounce()
+
     def _debounce(self) -> None:
         """連続イベントをまとめて 1 回の同期にする。"""
         if self._timer is not None:
