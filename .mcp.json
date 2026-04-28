@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "dagayn": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/manji-0/dagayn.git",
+        "dagayn",
+        "serve"
+      ],
+      "type": "stdio"
+    }
+  }
+}
