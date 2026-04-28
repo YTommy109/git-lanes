@@ -76,6 +76,32 @@ def _place_parent(
         commit_to_node[ph] = pnode
 
 
+def _realize_dummy(
+    node: GraphNode,
+    curr: GraphLayer,
+    commit_to_node: dict[str, GraphNode],
+    children_map: dict[str, list[str]],
+) -> None:
+    """ダミーノードを実レイヤーに具現化する。
+
+    Args:
+        node: ダミーノードのインスタンス。
+        curr: カレントレイヤー。
+        commit_to_node: コミットハッシュ→ノードのマッピング。
+        children_map: コミットハッシュ→子コミットハッシュのマッピング。
+    """
+    ready = _is_ready(node.commit.hash, curr, commit_to_node, children_map)
+    new = GraphNode(
+        commit=node.commit,
+        layer=curr,
+        primary_line=node.primary_line,
+        dummy=not ready,
+    )
+    node.primary_line.nodes.append(new)
+    curr.nodes.append(new)
+    commit_to_node[node.commit.hash] = new
+
+
 def _process_ready_node(
     node: GraphNode,
     curr: GraphLayer,
@@ -120,16 +146,7 @@ def build_layers(
         curr = GraphLayer(index=len(layers))
         for node in prev.nodes:
             if node.dummy:
-                ready = _is_ready(node.commit.hash, curr, commit_to_node, children_map)
-                new = GraphNode(
-                    commit=node.commit,
-                    layer=curr,
-                    primary_line=node.primary_line,
-                    dummy=not ready,
-                )
-                node.primary_line.nodes.append(new)
-                curr.nodes.append(new)
-                commit_to_node[node.commit.hash] = new
+                _realize_dummy(node, curr, commit_to_node, children_map)
             else:
                 _process_ready_node(
                     node,
