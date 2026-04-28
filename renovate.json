@@ -9,6 +9,10 @@
     {
       "matchDepTypes": ["devDependencies"],
       "automerge": true
+    },
+    {
+      "matchPackageNames": ["python"],
+      "enabled": false
     }
   ]
 }
