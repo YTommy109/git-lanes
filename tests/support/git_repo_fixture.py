@@ -69,3 +69,37 @@ def make_two_branch_repo(path: Path) -> Path:
     repo.create_commit("refs/heads/main", sig, sig, "second", tree3, [oid1])
 
     return path
+
+
+def make_tagged_repo(path: Path) -> tuple[Path, str, str]:
+    """軽量タグと注釈付きタグを持つリポジトリを作成する。
+
+    Args:
+        path: リポジトリのルートディレクトリ。
+
+    Returns:
+        (リポジトリパス, 軽量タグのコミットハッシュ, 注釈付きタグのコミットハッシュ)
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    repo = pygit2.init_repository(str(path), False)
+    sig = pygit2.Signature("テスト", "t@example.com", int(time.time()), 0)
+
+    (path / "a.txt").write_text("a\n", encoding="utf-8")
+    repo.index.add("a.txt")
+    repo.index.write()
+    oid1 = repo.create_commit("refs/heads/main", sig, sig, "first", repo.index.write_tree(), [])
+
+    (path / "b.txt").write_text("b\n", encoding="utf-8")
+    repo.index.add("b.txt")
+    repo.index.write()
+    oid2 = repo.create_commit(
+        "refs/heads/main", sig, sig, "second", repo.index.write_tree(), [oid1]
+    )
+
+    # 軽量タグ: 1 つ目のコミットに付ける
+    repo.create_reference("refs/tags/v0.1", oid1, False)
+
+    # 注釈付きタグ: 2 つ目のコミットに付ける
+    repo.create_tag("v1.0", oid2, pygit2.enums.ObjectType.COMMIT, sig, "Release 1.0")
+
+    return path, str(oid1), str(oid2)
