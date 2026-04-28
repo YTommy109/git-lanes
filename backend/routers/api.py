@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Annotated
 
 import pygit2
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
@@ -16,12 +16,19 @@ from sqlmodel import Session
 from backend.db import get_session
 from backend.repositories import cache_repo
 from backend.repositories.git_repo import open_repository
+from backend.services.watch_service import WatchService
 
 router = APIRouter(tags=["api"])
 
 
+def _get_watch_service(request: Request) -> WatchService | None:
+    """app.state から WatchService を取り出す。lifespan 未起動時は None。"""
+    return getattr(request.app.state, "watch_service", None)
+
+
 @router.post("/api/repos")
 async def register_repository(
+    request: Request,
     path: Annotated[str, Form()],
     session: Session = Depends(get_session),
 ) -> RedirectResponse:
@@ -35,10 +42,15 @@ async def register_repository(
         raise HTTPException(status_code=400, detail="Git リポジトリとして開けません") from exc
     repo_id = str(uuid.uuid4())
     existing = cache_repo.get_repository_by_path(session, str(resolved))
+    watch_svc = _get_watch_service(request)
     if existing is not None:
+        if watch_svc is not None:
+            watch_svc.watch(existing.id, existing.path)
         return RedirectResponse(url=f"/repos/{existing.id}/graph", status_code=303)
     try:
         cache_repo.insert_repository(session, repo_id, str(resolved), resolved.name)
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail="このパスは既に登録されています") from exc
+    if watch_svc is not None:
+        watch_svc.watch(repo_id, str(resolved))
     return RedirectResponse(url=f"/repos/{repo_id}/graph", status_code=303)

@@ -1,6 +1,6 @@
 [project]
 name = "git-lanes"
-version = "0.1.5"
+version = "0.2.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.136",
@@ -12,6 +12,7 @@ dependencies = [
     "sqlmodel>=0.0.38",
     "pywebview>=6.2",
     "httpx>=0.28",
+    "sse-starlette>=2.1",
 ]
 
 [dependency-groups]
@@ -62,7 +63,7 @@ omit = ["tests/*"]
 fail_under = 85
 
 [tool.bumpversion]
-current_version = "0.1.5"
+current_version = "0.2.0"
 commit = true
 tag = true
 tag_name = "v{new_version}"

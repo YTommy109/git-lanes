@@ -88,6 +88,29 @@ def test_sync_repository_タグなしリポジトリはタグ0件(session, tmp_p
     assert cache_repo.list_tags(session, repo_id) == []
 
 
+def test_sync_repository_既存コミット先端の新ブランチが同期される(session, tmp_path):
+    # --- Arrange ---
+    # 初回同期後、同じコミットに新ブランチを追加する（git switch -c 相当）
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo_id = str(uuid.uuid4())
+    cache_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+    branches_before = {b.name for b in cache_repo.list_branches(session, repo_id)}
+    assert "hogehoge" not in branches_before
+
+    # 既存コミットに新ブランチを作成する（HEAD は変わらない）
+    repo_pygit = pygit2.Repository(str(repo_path))
+    tip_commit = repo_pygit.head.peel(pygit2.Commit)
+    repo_pygit.create_branch("hogehoge", tip_commit, False)
+
+    # --- Act ---
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+
+    # --- Assert ---
+    branches_after = {b.name for b in cache_repo.list_branches(session, repo_id)}
+    assert "hogehoge" in branches_after
+
+
 def test_sync_repository_ウォーク範囲外のタグはスキップされる(session, tmp_path):
     # --- Arrange ---
     # タグ付きリポジトリを作り、ブランチに属さない孤立コミットにもタグを付ける

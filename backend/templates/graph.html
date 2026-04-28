@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ repo_name }} — グラフ{% endblock %}
 {% block body %}
+<div
+  hx-ext="sse"
+  sse-connect="/repos/{{ repo_id }}/events"
+  _="on sse:reload call window.location.reload()"
+></div>
 <div id="commit-tooltip"
      style="display:none;position:fixed;background:#222;color:#eee;padding:4px 10px;border-radius:4px;font-size:12px;pointer-events:none;z-index:1000;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
 <main class="l--flex" style="height: 100%">
