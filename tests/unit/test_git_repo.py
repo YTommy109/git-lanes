@@ -2,8 +2,12 @@
 
 import pygit2
 
-from backend.repositories.git_repo import walk_commits_from_branches
-from tests.support.git_repo_fixture import make_two_branch_repo
+from backend.repositories.git_repo import iter_tags, walk_commits_from_branches
+from tests.support.git_repo_fixture import (
+    make_tagged_repo,
+    make_two_branch_repo,
+    make_two_commit_repo,
+)
 
 
 def test_walk_commits_from_branches_全ブランチのコミットを返す(tmp_path):
@@ -33,6 +37,30 @@ def test_walk_commits_from_branches_空リポジトリは空を返す(tmp_path):
 
     # --- Act ---
     result = walk_commits_from_branches(pygit2_repo)
+
+    # --- Assert ---
+    assert result == []
+
+
+def test_iter_tags_軽量タグと注釈付きタグを返す(tmp_path):
+    # --- Arrange ---
+    repo_path, hash1, hash2 = make_tagged_repo(tmp_path / "repo")
+    repo = pygit2.Repository(str(repo_path))
+
+    # --- Act ---
+    result = dict(iter_tags(repo))
+
+    # --- Assert ---
+    assert result == {"v0.1": hash1, "v1.0": hash2}
+
+
+def test_iter_tags_タグなしは空を返す(tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo = pygit2.Repository(str(repo_path))
+
+    # --- Act ---
+    result = list(iter_tags(repo))
 
     # --- Assert ---
     assert result == []
