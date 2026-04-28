@@ -33,6 +33,41 @@ def assign_coords(layers: list[GraphLayer]) -> None:
             last_x = x
 
 
+def _make_svg_node(
+    node: GraphNode,
+    layer: GraphLayer,
+    labels_by_hash: dict[str, list[str]],
+) -> SvgNode:
+    """単一ノードの SvgNode を生成する。"""
+    return SvgNode(
+        cx=node.x * SPACING_X,
+        cy=layer.y,
+        color=node.primary_line.color,
+        commit=node.commit,
+        labels=labels_by_hash.get(node.commit.hash, []),
+    )
+
+
+def _make_svg_edges(
+    node: GraphNode,
+    layer: GraphLayer,
+    parents: dict[str, list[str]],
+    commit_to_node: dict[str, GraphNode],
+    edge_colors: dict[tuple[str, str], str],
+) -> list[SvgEdge]:
+    """単一ノードから親へのエッジリストを生成する。ダミー親はスキップする。"""
+    edges: list[SvgEdge] = []
+    for ph in parents.get(node.commit.hash, []):
+        pnode = commit_to_node.get(ph)
+        if pnode is None or pnode.dummy:
+            continue
+        color = edge_colors.get((node.commit.hash, ph), node.primary_line.color)
+        x1, y1 = node.x * SPACING_X, layer.y
+        x2, y2 = pnode.x * SPACING_X, pnode.layer.y
+        edges.append(SvgEdge(d=f"M {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f}", color=color))
+    return edges
+
+
 def to_svg(
     layers: list[GraphLayer],
     parents: dict[str, list[str]],
@@ -40,43 +75,15 @@ def to_svg(
     edge_colors: dict[tuple[str, str], str],
     labels_by_hash: dict[str, list[str]],
 ) -> GraphResult:
-    """座標付きレイヤーを SvgNode/SvgEdge に変換して GraphResult を返す。
-
-    エッジは commit_to_node の最終状態（ダミー解決済み）を参照して描画する。
-    """
+    """座標付きレイヤーを SvgNode/SvgEdge に変換して GraphResult を返す。"""
     svg_nodes: list[SvgNode] = []
     svg_edges: list[SvgEdge] = []
-
     for layer in layers:
         for node in layer.nodes:
             if node.dummy:
                 continue
-            svg_nodes.append(
-                SvgNode(
-                    cx=node.x * SPACING_X,
-                    cy=layer.y,
-                    color=node.primary_line.color,
-                    commit=node.commit,
-                    labels=labels_by_hash.get(node.commit.hash, []),
-                )
-            )
-            for parent_hash in parents.get(node.commit.hash, []):
-                parent_node = commit_to_node.get(parent_hash)
-                if parent_node is None or parent_node.dummy:
-                    continue
-                color = edge_colors.get(
-                    (node.commit.hash, parent_hash),
-                    node.primary_line.color,
-                )
-                x1, y1 = node.x * SPACING_X, layer.y
-                x2, y2 = parent_node.x * SPACING_X, parent_node.layer.y
-                svg_edges.append(
-                    SvgEdge(
-                        d=f"M {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f}",
-                        color=color,
-                    )
-                )
-
+            svg_nodes.append(_make_svg_node(node, layer, labels_by_hash))
+            svg_edges.extend(_make_svg_edges(node, layer, parents, commit_to_node, edge_colors))
     max_cx = max((n.cx for n in svg_nodes), default=0.0)
     max_cy = max((n.cy for n in svg_nodes), default=0.0)
     return GraphResult(
