@@ -1,7 +1,7 @@
 [project]
 name = "git-lanes"
 version = "0.2.0"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "fastapi>=0.136",
     "uvicorn[standard]>=0.46",
