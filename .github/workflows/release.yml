@@ -14,11 +14,12 @@ jobs:
       DMG_NAME: GitLanes-${{ github.ref_name }}.dmg
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: "3.12"
+          enable-cache: true
 
       - name: 依存パッケージをインストールする
         run: uv sync --group dev --frozen

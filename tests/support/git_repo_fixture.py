@@ -19,6 +19,7 @@ def make_two_commit_repo(path: Path) -> Path:
     """
     path.mkdir(parents=True, exist_ok=True)
     repo = pygit2.init_repository(str(path), False)
+    repo.set_head("refs/heads/main")
     sig = pygit2.Signature("テスト", "t@example.com", int(time.time()), 0)
     (path / "a.txt").write_text("a\n", encoding="utf-8")
     repo.index.add("a.txt")
@@ -44,6 +45,7 @@ def make_two_branch_repo(path: Path) -> Path:
     """
     path.mkdir(parents=True, exist_ok=True)
     repo = pygit2.init_repository(str(path), False)
+    repo.set_head("refs/heads/main")
     sig = pygit2.Signature("テスト", "t@example.com", int(time.time()), 0)
 
     (path / "a.txt").write_text("a\n", encoding="utf-8")
@@ -82,6 +84,7 @@ def make_tagged_repo(path: Path) -> tuple[Path, str, str]:
     """
     path.mkdir(parents=True, exist_ok=True)
     repo = pygit2.init_repository(str(path), False)
+    repo.set_head("refs/heads/main")
     sig = pygit2.Signature("テスト", "t@example.com", int(time.time()), 0)
 
     (path / "a.txt").write_text("a\n", encoding="utf-8")
