@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import plistlib
 import subprocess
 import sys
 from pathlib import Path
+from typing import Literal
 
 from backend.services import update_service
 
 _SCRIPT_PATH = Path("/tmp/git-lanes-updater.sh")
+
+InstallResult = Literal["ok", "no_dmg", "mount_failed", "no_app", "not_frozen"]
 
 
 def _get_app_path() -> Path | None:
@@ -21,6 +25,40 @@ def _get_app_path() -> Path | None:
         return None
     # sys.executable = /Applications/Git Lanes.app/Contents/MacOS/Git Lanes
     return Path(sys.executable).parent.parent.parent
+
+
+def _mount_dmg(dmg_path: str) -> Path | None:
+    """DMG をマウントしてマウントポイントを返す。
+
+    plist 出力で確実にパースする。quarantine 属性を事前に除去する。
+
+    Args:
+        dmg_path: DMG ファイルのパス。
+
+    Returns:
+        マウントポイントの Path。失敗時は None。
+    """
+    subprocess.run(
+        ["xattr", "-d", "com.apple.quarantine", dmg_path],
+        capture_output=True,
+    )
+    try:
+        result = subprocess.run(
+            ["hdiutil", "attach", dmg_path, "-nobrowse", "-agree", "-plist"],
+            capture_output=True,
+            check=True,
+            timeout=60,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+    try:
+        plist = plistlib.loads(result.stdout)
+    except Exception:
+        return None
+    for entity in plist.get("system-entities", []):
+        if "mount-point" in entity:
+            return Path(entity["mount-point"])
+    return None
 
 
 def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) -> Path:
@@ -47,33 +85,24 @@ def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) 
     return _SCRIPT_PATH
 
 
-def install_update() -> None:
+def install_update() -> InstallResult:
     """DMG をマウントして .app を差し替え、再起動スクリプトを実行する。
 
-    開発環境（sys.frozen が偽）では何もせず return する。
-    ダウンロードが完了していない場合も何もせず return する。
+    Returns:
+        実行結果コード。成功時は "ok"（その後 sys.exit するため返らない）。
     """
     dmg_path = update_service.get_download_state().get("dmg_path")
     if not dmg_path or not Path(dmg_path).exists():
-        return
-    try:
-        result = subprocess.run(
-            ["hdiutil", "attach", dmg_path, "-nobrowse", "-agree"],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=60,
-        )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return
-    last_line = result.stdout.strip().split("\n")[-1]
-    mount_point = Path(last_line.split("\t")[-1].strip())
+        return "no_dmg"
+    mount_point = _mount_dmg(dmg_path)
+    if mount_point is None:
+        return "mount_failed"
     apps = list(mount_point.glob("*.app"))
     if not apps:
-        return
+        return "no_app"
     app_path = _get_app_path()
     if app_path is None:
-        return
-    script_path = _write_updater_script(app_path, mount_point, apps[0])
-    subprocess.Popen(["bash", str(script_path)])
+        return "not_frozen"
+    _write_updater_script(app_path, mount_point, apps[0])
+    subprocess.Popen(["bash", str(_SCRIPT_PATH)])
     sys.exit(0)

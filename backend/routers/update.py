@@ -56,7 +56,16 @@ def get_progress(request: Request) -> HTMLResponse:
     )
 
 
-@router.post("/install")
-def do_install() -> None:
-    """インストールして再起動する。"""
-    install_update()
+@router.post("/install", response_class=HTMLResponse)
+def do_install(request: Request) -> HTMLResponse:
+    """インストールして再起動する。エラー時はエラー状態の UI を返す。"""
+    result = install_update()
+    # "not_frozen" は開発環境なので正常扱い（UI テスト用）
+    if result in ("not_frozen",):
+        return HTMLResponse(content="")
+    state = {"percent": 100, "status": f"install_error:{result}"}
+    return templates.TemplateResponse(
+        request,
+        "partials/update_progress.html",
+        {"percent": 100, "status": state["status"]},
+    )

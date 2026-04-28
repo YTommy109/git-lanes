@@ -20,5 +20,8 @@
     </button>
   {% elif status == "error" %}
     <p style="margin: 0; color: var(--color-caution)">ダウンロードに失敗しました</p>
+  {% elif status.startswith("install_error:") %}
+    <p style="margin: 0; color: var(--color-caution)">インストールに失敗しました（{{ status.split(":")[-1] }}）</p>
+    <p style="margin: 0.3rem 0 0; font-size: 0.7rem">DMG ファイルを手動でマウントして更新してください。</p>
   {% endif %}
 </div>
