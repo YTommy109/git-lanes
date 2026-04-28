@@ -8,6 +8,7 @@ from sqlmodel import Session
 from backend.repositories import cache_repo
 from backend.repositories.git_repo import (
     iter_local_branches,
+    iter_tags,
     open_repository,
     walk_commits_from_branches,
 )
@@ -68,13 +69,38 @@ def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     _sync_commits_and_branches(session, repo_id, repo, head_hex)
 
 
+def _sync_tags(session: Session, repo_id: str, repo: pygit2.Repository) -> None:
+    """ウォークツリー内のタグをキャッシュに書き込む。
+
+    Args:
+        session: DB セッション。
+        repo_id: リポジトリ ID。
+        repo: pygit2 リポジトリ。
+    """
+    for tag_name, commit_hash in iter_tags(repo):
+        if cache_repo.get_commit(session, repo_id, commit_hash) is not None:
+            cache_repo.insert_tag_row(session, repo_id, tag_name, commit_hash)
+
+
+def _sync_parents(session: Session, commits: list) -> None:
+    """コミットの親子関係をキャッシュに書き込む。
+
+    Args:
+        session: DB セッション。
+        commits: pygit2.Commit のリスト。
+    """
+    for c in commits:
+        for pos, parent_id in enumerate(c.parent_ids):
+            cache_repo.insert_parent_row(session, str(c.id), str(parent_id), pos)
+
+
 def _sync_commits_and_branches(
     session: Session,
     repo_id: str,
     repo: pygit2.Repository,
     head_hex: str,
 ) -> None:
-    """コミット・ブランチをキャッシュに書き込む。
+    """コミット・ブランチ・タグをキャッシュに書き込む。
 
     Args:
         session: DB セッション。
@@ -97,13 +123,12 @@ def _sync_commits_and_branches(
             c.author.email,
             int(c.commit_time),
         )
-    for c in commits:
-        for pos, parent_id in enumerate(c.parent_ids):
-            cache_repo.insert_parent_row(session, str(c.id), str(parent_id), pos)
+    _sync_parents(session, commits)
     try:
         for branch_name, tip in iter_local_branches(repo):
             cache_repo.insert_branch_row(session, repo_id, branch_name, tip, 0)
     except pygit2.GitError:
         pass
+    _sync_tags(session, repo_id, repo)
     session.commit()
     cache_repo.update_sync_state(session, repo_id, head_hex)

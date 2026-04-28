@@ -76,6 +76,11 @@
                on click remove .selected from .commit-node then add .selected to me"
           >
             <circle cx="{{ node.x }}" cy="{{ node.y }}" r="8" fill="{{ color }}"/>
+            {% if tags_by_hash.get(node.commit.hash) %}
+            <text x="{{ node.x + 14 }}" y="{{ node.y + 4 }}"
+                  font-size="10" fill="#e07b00" font-weight="bold"
+                  pointer-events="none">{{ tags_by_hash[node.commit.hash] | join(", ") }}</text>
+            {% endif %}
           </g>
         {% endfor %}
       </svg>

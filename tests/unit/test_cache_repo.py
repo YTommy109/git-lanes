@@ -333,3 +333,91 @@ def test_list_repositories_0件は空リストを返す(session):
 
     # --- Assert ---
     assert result == []
+
+
+# ── タグ CRUD ──────────────────────────────────────────────
+
+
+def _add_tag(session: Session, repo_id: str, name: str, commit_hash: str) -> None:
+    """テスト用タグを挿入する。"""
+    cache_repo.insert_tag_row(session, repo_id, name, commit_hash)
+    session.commit()
+
+
+def test_insert_tag_row_正常挿入(session):
+    # --- Arrange ---
+    _add_repo(session)
+    _add_commit(session, "r1", "a" * 40)
+
+    # --- Act ---
+    _add_tag(session, "r1", "v1.0", "a" * 40)
+
+    # --- Assert ---
+    tags = cache_repo.list_tags(session, "r1")
+    assert len(tags) == 1
+    assert tags[0].name == "v1.0"
+    assert tags[0].commit_hash == "a" * 40
+
+
+def test_list_tags_複数タグを返す(session):
+    # --- Arrange ---
+    _add_repo(session)
+    _add_commit(session, "r1", "a" * 40)
+    _add_tag(session, "r1", "v0.1", "a" * 40)
+    _add_tag(session, "r1", "v1.0", "a" * 40)
+
+    # --- Act ---
+    result = cache_repo.list_tags(session, "r1")
+
+    # --- Assert ---
+    assert {t.name for t in result} == {"v0.1", "v1.0"}
+
+
+def test_list_tags_タグなしは空を返す(session):
+    # --- Arrange ---
+    _add_repo(session)
+
+    # --- Act ---
+    result = cache_repo.list_tags(session, "r1")
+
+    # --- Assert ---
+    assert result == []
+
+
+def test_get_tags_for_commit_該当タグ名リストを返す(session):
+    # --- Arrange ---
+    _add_repo(session)
+    _add_commit(session, "r1", "a" * 40)
+    _add_tag(session, "r1", "v1.0", "a" * 40)
+    _add_tag(session, "r1", "v1.0-rc1", "a" * 40)
+
+    # --- Act ---
+    result = cache_repo.get_tags_for_commit(session, "r1", "a" * 40)
+
+    # --- Assert ---
+    assert set(result) == {"v1.0", "v1.0-rc1"}
+
+
+def test_get_tags_for_commit_タグなしは空を返す(session):
+    # --- Arrange ---
+    _add_repo(session)
+    _add_commit(session, "r1", "a" * 40)
+
+    # --- Act ---
+    result = cache_repo.get_tags_for_commit(session, "r1", "a" * 40)
+
+    # --- Assert ---
+    assert result == []
+
+
+def test_purge_graph_data_タグも削除される(session):
+    # --- Arrange ---
+    _add_repo(session)
+    _add_commit(session, "r1", "a" * 40)
+    _add_tag(session, "r1", "v1.0", "a" * 40)
+
+    # --- Act ---
+    cache_repo.purge_graph_data(session, "r1")
+
+    # --- Assert ---
+    assert cache_repo.list_tags(session, "r1") == []

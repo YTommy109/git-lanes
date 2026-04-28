@@ -65,3 +65,27 @@ def iter_local_branches(repo: pygit2.Repository) -> Iterator[tuple[str, str]]:
             continue
         tip = branch.peel(pygit2.Commit)
         yield name, str(tip.id)
+
+
+def iter_tags(repo: pygit2.Repository) -> Iterator[tuple[str, str]]:
+    """タグ名とそのコミットハッシュを列挙する。
+
+    軽量タグ・注釈付きタグの両方を対象とする。
+    コミット以外を指すタグ（blob 等）はスキップする。
+
+    Args:
+        repo: 対象リポジトリ。
+
+    Yields:
+        ``(タグ名, コミットのフルハッシュ)``。
+    """
+    for ref_name in repo.references:
+        if not ref_name.startswith("refs/tags/"):
+            continue
+        tag_name = ref_name[len("refs/tags/") :]
+        ref = repo.references[ref_name]
+        try:
+            commit = ref.peel(pygit2.Commit)
+        except pygit2.GitError:
+            continue
+        yield tag_name, str(commit.id)
