@@ -12,9 +12,8 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 
 from backend.db import get_session
-from backend.models import Repository, Tag
 from backend.repositories import cache_repo
-from backend.services import graph_layout, sync_service
+from backend.services import graph_builder, sync_service
 from backend.validation import parse_commit_hash, parse_repo_id
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -34,59 +33,6 @@ async def welcome(
     )
 
 
-def _build_tags_by_hash(tags: list[Tag]) -> dict[str, list[str]]:
-    """タグリストをコミットハッシュ→タグ名リストの辞書に変換する。
-
-    Args:
-        tags: Tag オブジェクトのリスト。
-
-    Returns:
-        commit_hash をキー、タグ名リストを値とする辞書。
-    """
-    result: dict[str, list[str]] = {}
-    for tag in tags:
-        result.setdefault(tag.commit_hash, []).append(tag.name)
-    return result
-
-
-def _build_graph_context(
-    rid: str,
-    rec: Repository,
-    nodes: list,
-    edges: list,
-    branch_lanes: list,
-) -> dict:
-    """グラフ画面のテンプレートコンテキストを構築する。
-
-    Args:
-        rid: リポジトリ ID。
-        rec: リポジトリレコード。
-        nodes: レイアウト済みノード一覧。
-        edges: エッジ一覧。
-        branch_lanes: ブランチレーン一覧。
-
-    Returns:
-        Jinja2 テンプレートに渡すコンテキスト辞書。
-    """
-    from backend.services.graph_layout import LANE_COLORS, ROW_SPACING, build_edge_segments
-
-    max_lane = max((bl.lane for bl in branch_lanes), default=0)
-    svg_width = max(320, max_lane * 70 + 300)
-    svg_height = 80.0 + max(len(nodes), 1) * ROW_SPACING
-    return {
-        "repo_id": rid,
-        "repo_name": rec.name,
-        "nodes": nodes,
-        "edge_segments": build_edge_segments(nodes, edges),
-        "branch_lanes": branch_lanes,
-        "position_by_hash": {n.commit.hash: n for n in nodes},
-        "svg_width": svg_width,
-        "svg_height": svg_height,
-        "lane_colors": LANE_COLORS,
-        "row_spacing": ROW_SPACING,
-    }
-
-
 @router.get("/repos/{repo_id}/graph", response_class=HTMLResponse)
 async def graph_page(
     request: Request,
@@ -102,15 +48,21 @@ async def graph_page(
         sync_service.sync_repository(session, rid, rec.path)
     except pygit2.GitError as exc:
         raise HTTPException(status_code=400, detail="Git リポジトリを開けません") from exc
-    rows = cache_repo.list_recent_commits(session, rid, 50)
+    rows = cache_repo.list_all_commits(session, rid)
     parents = cache_repo.parents_by_child(session, [r.hash for r in rows])
     branches = cache_repo.list_branches(session, rid)
-    tags_by_hash = _build_tags_by_hash(cache_repo.list_tags(session, rid))
-    nodes, edges, branch_lanes = graph_layout.build_multi_lane_layout(rows, parents, branches)
-    context = _build_graph_context(rid, rec, nodes, edges, branch_lanes)
-    context["repos"] = cache_repo.list_repositories(session)
-    context["current_repo_id"] = rid
-    context["tags_by_hash"] = tags_by_hash
+    tags = cache_repo.list_tags(session, rid)
+    result = graph_builder.build_graph(rows, parents, branches, tags, rec.cached_head)
+    context: dict = {
+        "repo_id": rid,
+        "repo_name": rec.name,
+        "nodes": result.nodes,
+        "edges": result.edges,
+        "svg_width": result.canvas_width,
+        "svg_height": result.canvas_height,
+        "repos": cache_repo.list_repositories(session),
+        "current_repo_id": rid,
+    }
     return templates.TemplateResponse(request, "graph.html", context)
 
 
