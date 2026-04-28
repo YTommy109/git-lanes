@@ -30,7 +30,7 @@ dev = [
 
 [tool.taskipy.tasks]
 dev         = "uvicorn backend.main:app --reload --port 8000"
-test        = "pytest -v"
+test        = "pytest -v --cov --cov-report=term-missing"
 "test:e2e"  = "pytest tests/e2e -v"
 lint        = "ruff check ."
 format      = "ruff format ."
