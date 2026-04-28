@@ -102,18 +102,7 @@ def build_graph(
     tags: list[Tag],
     head_hash: str | None = None,
 ) -> GraphResult:
-    """gitup GIGraph アルゴリズムでグラフを構築して SVG データを返す。
-
-    Args:
-        commits: 対象リポジトリの全コミット。
-        parents: {child_hash: [parent_hash, ...]} の親子関係辞書。
-        branches: リポジトリの全ブランチ。
-        tags: リポジトリの全タグ。
-        head_hash: HEAD コミットのハッシュ。None の場合は HEAD ラベルを付けない。
-
-    Returns:
-        SVG 描画用の GraphResult。
-    """
+    """gitup GIGraph アルゴリズムでグラフを構築して SVG データを返す。"""
     if not commits:
         return GraphResult(nodes=[], edges=[], canvas_width=300.0, canvas_height=100.0)
 
