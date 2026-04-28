@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 
 from backend.db import get_session
-from backend.models import Repository
+from backend.models import Repository, Tag
 from backend.repositories import cache_repo
 from backend.services import graph_layout, sync_service
 from backend.validation import parse_commit_hash, parse_repo_id
@@ -32,6 +32,21 @@ async def welcome(
     return templates.TemplateResponse(
         request, "welcome.html", {"repos": repos, "current_repo_id": None}
     )
+
+
+def _build_tags_by_hash(tags: list[Tag]) -> dict[str, list[str]]:
+    """タグリストをコミットハッシュ→タグ名リストの辞書に変換する。
+
+    Args:
+        tags: Tag オブジェクトのリスト。
+
+    Returns:
+        commit_hash をキー、タグ名リストを値とする辞書。
+    """
+    result: dict[str, list[str]] = {}
+    for tag in tags:
+        result.setdefault(tag.commit_hash, []).append(tag.name)
+    return result
 
 
 def _build_graph_context(
@@ -90,10 +105,12 @@ async def graph_page(
     rows = cache_repo.list_recent_commits(session, rid, 50)
     parents = cache_repo.parents_by_child(session, [r.hash for r in rows])
     branches = cache_repo.list_branches(session, rid)
+    tags_by_hash = _build_tags_by_hash(cache_repo.list_tags(session, rid))
     nodes, edges, branch_lanes = graph_layout.build_multi_lane_layout(rows, parents, branches)
     context = _build_graph_context(rid, rec, nodes, edges, branch_lanes)
     context["repos"] = cache_repo.list_repositories(session)
     context["current_repo_id"] = rid
+    context["tags_by_hash"] = tags_by_hash
     return templates.TemplateResponse(request, "graph.html", context)
 
 
@@ -113,4 +130,7 @@ async def commit_detail(
     row = cache_repo.get_commit(session, rid, ch)
     if row is None:
         raise HTTPException(status_code=404, detail="コミットが見つかりません")
-    return templates.TemplateResponse(request, "partials/detail.html", {"commit": row})
+    tags = cache_repo.get_tags_for_commit(session, rid, ch)
+    return templates.TemplateResponse(
+        request, "partials/detail.html", {"commit": row, "tags": tags}
+    )
