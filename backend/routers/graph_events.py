@@ -21,7 +21,7 @@ def make_router(event_bus: EventBus) -> APIRouter:
     router = APIRouter(tags=["graph-events"])
 
     @router.get("/repos/{repo_id}/events")
-    async def graph_events(repo_id: str) -> EventSourceResponse:
+    async def graph_events(repo_id: str):
         """グラフ更新 SSE ストリームを返す。変化があると event: reload を送信する。"""
         rid = parse_repo_id(repo_id)
 
