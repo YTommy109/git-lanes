@@ -135,3 +135,30 @@ table "branches" {
     ref_columns = [table.repositories.column.id]
   }
 }
+
+table "tags" {
+  schema = schema.main
+  column "name" {
+    type = text
+    null = false
+  }
+  column "repo_id" {
+    type = text
+    null = false
+  }
+  column "commit_hash" {
+    type = text
+    null = false
+  }
+  primary_key {
+    columns = [column.name, column.repo_id]
+  }
+  foreign_key "tags_repo_fk" {
+    columns     = [column.repo_id]
+    ref_columns = [table.repositories.column.id]
+  }
+  foreign_key "tags_commit_fk" {
+    columns     = [column.commit_hash]
+    ref_columns = [table.commits.column.hash]
+  }
+}

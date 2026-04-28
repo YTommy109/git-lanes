@@ -53,3 +53,13 @@ class Branch(SQLModel, table=True):
     repo_id: str = Field(primary_key=True, foreign_key="repositories.id")
     tip_hash: str = Field(sa_column=Column(String, nullable=False))
     is_remote: int = Field(default=0)
+
+
+class Tag(SQLModel, table=True):
+    """タグ情報。"""
+
+    __tablename__ = "tags"
+
+    name: str = Field(primary_key=True)
+    repo_id: str = Field(primary_key=True, foreign_key="repositories.id")
+    commit_hash: str = Field(sa_column=Column(String, nullable=False))
