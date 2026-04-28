@@ -21,9 +21,9 @@ from backend.services.watch_service import WatchService
 router = APIRouter(tags=["api"])
 
 
-def _get_watch_service(request: Request) -> WatchService:
-    """app.state から WatchService を取り出す。"""
-    return request.app.state.watch_service  # type: ignore[no-any-return]
+def _get_watch_service(request: Request) -> WatchService | None:
+    """app.state から WatchService を取り出す。lifespan 未起動時は None。"""
+    return getattr(request.app.state, "watch_service", None)
 
 
 @router.post("/api/repos")
@@ -42,12 +42,15 @@ async def register_repository(
         raise HTTPException(status_code=400, detail="Git リポジトリとして開けません") from exc
     repo_id = str(uuid.uuid4())
     existing = cache_repo.get_repository_by_path(session, str(resolved))
+    watch_svc = _get_watch_service(request)
     if existing is not None:
-        _get_watch_service(request).watch(existing.id, existing.path)
+        if watch_svc is not None:
+            watch_svc.watch(existing.id, existing.path)
         return RedirectResponse(url=f"/repos/{existing.id}/graph", status_code=303)
     try:
         cache_repo.insert_repository(session, repo_id, str(resolved), resolved.name)
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail="このパスは既に登録されています") from exc
-    _get_watch_service(request).watch(repo_id, str(resolved))
+    if watch_svc is not None:
+        watch_svc.watch(repo_id, str(resolved))
     return RedirectResponse(url=f"/repos/{repo_id}/graph", status_code=303)

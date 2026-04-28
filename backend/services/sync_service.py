@@ -45,6 +45,15 @@ def _has_missing_tips(session: Session, repo_id: str, repo: pygit2.Repository) -
     return False
 
 
+def _has_missing_branches(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
+    """DB に未登録のブランチが存在すれば True を返す。
+
+    既存コミットを先端に持つ新ブランチ（git switch -c など）を検知する。
+    """
+    cached_names = {b.name for b in cache_repo.list_branches(session, repo_id)}
+    return any(name not in cached_names for name in repo.branches.local)
+
+
 def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     """必要ならリポジトリ内容をフル再同期する。
 
@@ -57,8 +66,10 @@ def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     """
     repo = open_repository(repo_path)
     head_hex = _head_hex_or_none(repo)
-    needs_sync = _should_resync(session, repo_id, head_hex) or _has_missing_tips(
-        session, repo_id, repo
+    needs_sync = (
+        _should_resync(session, repo_id, head_hex)
+        or _has_missing_tips(session, repo_id, repo)
+        or _has_missing_branches(session, repo_id, repo)
     )
     if not needs_sync:
         return
