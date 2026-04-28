@@ -106,3 +106,18 @@ def test_異なる_repo_id_には通知されない():
 
     # --- Assert ---
     assert result == ["reload"]
+
+
+def test_set_loop_前の_subscribe_は_RuntimeError_を送出する():
+    # --- Arrange ---
+    bus = EventBus()
+
+    async def _run():
+        async for _ in bus.subscribe("repo1"):
+            pass
+
+    # --- Act / Assert ---
+    import pytest
+
+    with pytest.raises(RuntimeError, match="set_loop"):
+        asyncio.run(_run())
