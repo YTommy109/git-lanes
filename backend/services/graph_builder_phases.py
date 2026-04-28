@@ -27,33 +27,6 @@ def _is_ready(
     return True
 
 
-def build_layer0(
-    tips: list[Commit],
-    layer: GraphLayer,
-    commit_to_node: dict[str, GraphNode],
-    children_map: dict[str, list[str]],
-    labels: dict[str, list[str]],
-    color_idx: list[int],
-) -> None:
-    """Phase 2: Layer 0 を構築し commit_to_node を初期化する。"""
-    for tip in tips:
-        color = LANE_COLORS[color_idx[0] % len(LANE_COLORS)]
-        color_idx[0] += 1
-        branch = GraphBranch(color=color, refs=labels.get(tip.hash, []))
-        line = GraphLine(branch=branch, color=color, is_main=True)
-        branch.main_line = line
-        node = GraphNode(
-            commit=tip,
-            layer=layer,
-            primary_line=line,
-            dummy=not _is_ready(tip.hash, layer, commit_to_node, children_map),
-        )
-        branch.tip_node = node
-        line.nodes.append(node)
-        layer.nodes.append(node)
-        commit_to_node[tip.hash] = node
-
-
 def _place_parent(
     ph: str,
     line: GraphLine,
@@ -82,14 +55,7 @@ def _realize_dummy(
     commit_to_node: dict[str, GraphNode],
     children_map: dict[str, list[str]],
 ) -> None:
-    """ダミーノードを実レイヤーに具現化する。
-
-    Args:
-        node: ダミーノードのインスタンス。
-        curr: カレントレイヤー。
-        commit_to_node: コミットハッシュ→ノードのマッピング。
-        children_map: コミットハッシュ→子コミットハッシュのマッピング。
-    """
+    """ダミーノードを次レイヤーに持ち越す（準備完了なら実ノードに昇格）。"""
     ready = _is_ready(node.commit.hash, curr, commit_to_node, children_map)
     new = GraphNode(
         commit=node.commit,
@@ -126,6 +92,33 @@ def _process_ready_node(
         _place_parent(ph, line, node, curr, commit_to_node, children_map, commit_map, edge_colors)
 
 
+def _process_layer(
+    prev: GraphLayer,
+    curr: GraphLayer,
+    commit_to_node: dict[str, GraphNode],
+    children_map: dict[str, list[str]],
+    parents: dict[str, list[str]],
+    commit_map: dict[str, Commit],
+    color_idx: list[int],
+    edge_colors: dict[tuple[str, str], str],
+) -> None:
+    """prev の各ノードを評価して curr にノードを追加する。"""
+    for node in prev.nodes:
+        if node.dummy:
+            _realize_dummy(node, curr, commit_to_node, children_map)
+        else:
+            _process_ready_node(
+                node,
+                curr,
+                commit_to_node,
+                children_map,
+                parents,
+                commit_map,
+                color_idx,
+                edge_colors,
+            )
+
+
 def build_layers(
     layer0: GraphLayer,
     commit_to_node: dict[str, GraphNode],
@@ -144,20 +137,9 @@ def build_layers(
     prev = layer0
     while True:
         curr = GraphLayer(index=len(layers))
-        for node in prev.nodes:
-            if node.dummy:
-                _realize_dummy(node, curr, commit_to_node, children_map)
-            else:
-                _process_ready_node(
-                    node,
-                    curr,
-                    commit_to_node,
-                    children_map,
-                    parents,
-                    commit_map,
-                    color_idx,
-                    edge_colors,
-                )
+        _process_layer(
+            prev, curr, commit_to_node, children_map, parents, commit_map, color_idx, edge_colors
+        )
         if not curr.nodes:
             break
         layers.append(curr)

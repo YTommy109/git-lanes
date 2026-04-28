@@ -6,11 +6,17 @@ from __future__ import annotations
 from backend.models import Branch, Commit, Tag
 from backend.services.graph_builder_phases import (
     _is_ready,  # noqa: F401  テストから graph_builder 経由でアクセスされる
-    build_layer0,
     build_layers,
 )
 from backend.services.graph_coords import assign_coords, to_svg
-from backend.services.graph_models import GraphLayer, GraphNode, GraphResult
+from backend.services.graph_models import (
+    LANE_COLORS,
+    GraphBranch,
+    GraphLayer,
+    GraphLine,
+    GraphNode,
+    GraphResult,
+)
 
 
 def _build_children_map(parents: dict[str, list[str]]) -> dict[str, list[str]]:
@@ -62,6 +68,33 @@ def _build_labels(
     return labels
 
 
+def _build_layer0(
+    tips: list[Commit],
+    layer: GraphLayer,
+    commit_to_node: dict[str, GraphNode],
+    children_map: dict[str, list[str]],
+    labels: dict[str, list[str]],
+    color_idx: list[int],
+) -> None:
+    """Phase 2: Layer 0 を構築し commit_to_node を初期化する。"""
+    for tip in tips:
+        color = LANE_COLORS[color_idx[0] % len(LANE_COLORS)]
+        color_idx[0] += 1
+        branch = GraphBranch(color=color, refs=labels.get(tip.hash, []))
+        line = GraphLine(branch=branch, color=color, is_main=True)
+        branch.main_line = line
+        node = GraphNode(
+            commit=tip,
+            layer=layer,
+            primary_line=line,
+            dummy=not _is_ready(tip.hash, layer, commit_to_node, children_map),
+        )
+        branch.tip_node = node
+        line.nodes.append(node)
+        layer.nodes.append(node)
+        commit_to_node[tip.hash] = node
+
+
 def build_graph(
     commits: list[Commit],
     parents: dict[str, list[str]],
@@ -95,7 +128,7 @@ def build_graph(
     layer0 = GraphLayer(index=0)
     commit_to_node: dict[str, GraphNode] = {}
     color_idx = [0]
-    build_layer0(tips, layer0, commit_to_node, children_map, labels, color_idx)
+    _build_layer0(tips, layer0, commit_to_node, children_map, labels, color_idx)
 
     layers, edge_colors = build_layers(
         layer0, commit_to_node, children_map, parents, commit_map, color_idx
