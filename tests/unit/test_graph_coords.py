@@ -1,0 +1,140 @@
+# tests/unit/test_graph_coords.py
+"""graph_coords の単体テスト。"""
+
+from backend.models import Branch, Commit
+from backend.services.graph_builder import build_graph
+from backend.services.graph_coords import assign_coords
+from backend.services.graph_models import (
+    MARGIN_TOP,
+    SPACING_Y,
+    GraphBranch,
+    GraphLayer,
+    GraphLine,
+    GraphNode,
+)
+
+_REPO_ID = "test-repo"
+
+
+def _c(prefix: str, at: int) -> Commit:
+    """テスト用 Commit を生成する。"""
+    h = prefix * 40
+    return Commit(
+        hash=h,
+        short_hash=h[:7],
+        message="msg",
+        author_name="a",
+        author_email="a@b.c",
+        committed_at=at,
+        repo_id=_REPO_ID,
+    )
+
+
+def _make_layer(index: int, count: int) -> GraphLayer:
+    """ノードを count 個持つ GraphLayer を生成する。"""
+    layer = GraphLayer(index=index)
+    for i in range(count):
+        branch = GraphBranch(color="#aaa")
+        line = GraphLine(branch=branch, color="#aaa")
+        node = GraphNode(
+            commit=_c(chr(ord("a") + i), i + 1),
+            layer=layer,
+            primary_line=line,
+        )
+        layer.nodes.append(node)
+    return layer
+
+
+def test_assign_coords_yはindex_に応じて計算される():
+    # --- Arrange ---
+    layer = _make_layer(index=2, count=1)
+
+    # --- Act ---
+    assign_coords([layer])
+
+    # --- Assert ---
+    assert layer.y == MARGIN_TOP + 2 * SPACING_Y
+
+
+def test_assign_coords_同一レイヤーのxは単調増加():
+    # --- Arrange ---
+    layer = _make_layer(index=0, count=3)
+
+    # --- Act ---
+    assign_coords([layer])
+
+    # --- Assert ---
+    xs = [n.x for n in layer.nodes]
+    assert xs == sorted(xs)
+    assert len(set(xs)) == 3
+
+
+def test_assign_coords_ライン継続性でxが引き継がれる():
+    # --- Arrange ---
+    branch = GraphBranch(color="#aaa")
+    line = GraphLine(branch=branch, color="#aaa")
+    layer0 = GraphLayer(index=0)
+    layer1 = GraphLayer(index=1)
+    node0 = GraphNode(commit=_c("a", 1), layer=layer0, primary_line=line)
+    node1 = GraphNode(commit=_c("b", 2), layer=layer1, primary_line=line)
+    layer0.nodes.append(node0)
+    layer1.nodes.append(node1)
+
+    # --- Act ---
+    assign_coords([layer0, layer1])
+
+    # --- Assert ---
+    assert node0.x == node1.x  # 同じラインは同じ X を維持
+
+
+def test_build_graph_ノードのcxcyが正の値():
+    # --- Arrange ---
+    commits = [_c("b", 2), _c("a", 1)]
+    parents = {"b" * 40: ["a" * 40]}
+    branches = [Branch(name="main", repo_id=_REPO_ID, tip_hash="b" * 40, is_remote=0)]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [])
+
+    # --- Assert ---
+    for n in result.nodes:
+        assert n.cx > 0
+        assert n.cy > 0
+
+
+def test_build_graph_エッジのd属性が有効なSVGパス():
+    # --- Arrange ---
+    commits = [_c("b", 2), _c("a", 1)]
+    parents = {"b" * 40: ["a" * 40]}
+    branches = [Branch(name="main", repo_id=_REPO_ID, tip_hash="b" * 40, is_remote=0)]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [])
+
+    # --- Assert ---
+    assert len(result.edges) == 1
+    assert result.edges[0].d.startswith("M ")
+    assert " L " in result.edges[0].d
+
+
+def test_build_graph_マージ第2親のエッジが描画される():
+    # --- Arrange ---
+    # main: M(merge) → B → A、第 2 親: F → A
+    m, b, a, f = (_c("m", 4), _c("b", 3), _c("a", 1), _c("f", 2))
+    commits = [m, b, f, a]
+    parents = {
+        "m" * 40: ["b" * 40, "f" * 40],
+        "b" * 40: ["a" * 40],
+        "f" * 40: ["a" * 40],
+    }
+    branches = [Branch(name="main", repo_id=_REPO_ID, tip_hash="m" * 40, is_remote=0)]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [])
+
+    # --- Assert ---
+    # M→F のエッジが存在する（第 2 親チェーンのエッジ）
+    node_by_hash = {n.commit.hash: n for n in result.nodes}
+    assert "f" * 40 in node_by_hash
+    # M の cx は F の cx と異なる（別レーンに配置される）
+    assert node_by_hash["m" * 40].cx != node_by_hash["f" * 40].cx

@@ -57,6 +57,23 @@ def list_recent_commits(session: Session, repo_id: str, limit: int) -> list[Comm
     )
 
 
+def list_all_commits(session: Session, repo_id: str) -> list[Commit]:
+    """コミットを committed_at 降順で全件返す。
+
+    Args:
+        session: DB セッション。
+        repo_id: リポジトリ ID。
+
+    Returns:
+        コミットのリスト。新しい順に並ぶ。
+    """
+    return list(
+        session.exec(
+            select(Commit).where(Commit.repo_id == repo_id).order_by(Commit.committed_at.desc())  # type: ignore[union-attr]  # ty:ignore[unresolved-attribute]
+        ).all()
+    )
+
+
 def get_commit(session: Session, repo_id: str, commit_hash: str) -> Commit | None:
     """1件のコミットを取得する。
 

@@ -13,7 +13,6 @@
            style="flex: 2; border-right: 1px solid var(--divider)">
     <header>
       <h1>{{ repo_name }}</h1>
-      <p class="-c:text-2 -fz:s">直近 50 コミット</p>
     </header>
     {% if not nodes %}
       <p>コミットがありません。</p>
@@ -26,47 +25,18 @@
         role="img"
         aria-label="コミット履歴"
       >
-        {# ブランチ名ラベル（斜め -40°・下端 Y=95 で下揃え） #}
-        {% for bl in branch_lanes %}
-          {% set color = lane_colors[bl.lane % 8] %}
-          <text
-            transform="rotate(-40,{{ bl.x }},125)"
-            x="{{ bl.x }}"
-            y="125"
-            font-size="11"
-            fill="{{ color }}"
-            font-weight="bold"
-          >{{ bl.name }}</text>
-        {% endfor %}
-
-        {# 波線：独自コミットなしブランチ（シンボル丸 → 縦波線 → 斜め波線） #}
-        {% for bl in branch_lanes %}
-          {% if not bl.has_unique_commits and bl.connect_hash in position_by_hash %}
-            {% set color = lane_colors[bl.lane % 8] %}
-            {% set target = position_by_hash[bl.connect_hash] %}
-            {% set bend_y = target.y - row_spacing %}
-            <line x1="{{ bl.x }}" y1="145" x2="{{ bl.x }}" y2="{{ bend_y }}"
-                  stroke="{{ color }}" stroke-width="2" stroke-dasharray="5,4"/>
-            <line x1="{{ bl.x }}" y1="{{ bend_y }}" x2="{{ target.x }}" y2="{{ target.y }}"
-                  stroke="{{ color }}" stroke-width="2" stroke-dasharray="5,4"/>
-            <circle cx="{{ bl.x }}" cy="145" r="5" fill="{{ color }}"/>
-          {% endif %}
-        {% endfor %}
-
         {# エッジ（コミット間の接続線） #}
-        {% for seg in edge_segments %}
-          {% set color = lane_colors[seg.lane % 8] %}
-          <line
-            x1="{{ seg.x1 }}" y1="{{ seg.y1 }}"
-            x2="{{ seg.x2 }}" y2="{{ seg.y2 }}"
-            stroke="{{ color }}"
+        {% for edge in edges %}
+          <path
+            d="{{ edge.d }}"
+            stroke="{{ edge.color }}"
             stroke-width="2.5"
+            fill="none"
           />
         {% endfor %}
 
-        {# コミット円 #}
+        {# コミット円とラベル #}
         {% for node in nodes %}
-          {% set color = lane_colors[node.lane % 8] %}
           <g
             class="commit-node"
             data-msg="{{ node.commit.message.split('\n')[0] }}"
@@ -80,11 +50,16 @@
                on mouseleave set #commit-tooltip.style.display to 'none'
                on click remove .selected from .commit-node then add .selected to me"
           >
-            <circle cx="{{ node.x }}" cy="{{ node.y }}" r="8" fill="{{ color }}"/>
-            {% if tags_by_hash.get(node.commit.hash) %}
-            <text x="{{ node.x + 14 }}" y="{{ node.y + 4 }}"
-                  font-size="10" fill="#e07b00" font-weight="bold"
-                  pointer-events="none">{{ tags_by_hash[node.commit.hash] | join(", ") }}</text>
+            <circle cx="{{ node.cx }}" cy="{{ node.cy }}" r="8" fill="{{ node.color }}"/>
+            {% if node.labels %}
+              <text
+                x="{{ node.cx + 14 }}"
+                y="{{ node.cy + 4 }}"
+                font-size="10"
+                fill="{{ node.color }}"
+                font-weight="bold"
+                pointer-events="none"
+              >{{ node.labels | join(", ") }}</text>
             {% endif %}
           </g>
         {% endfor %}
