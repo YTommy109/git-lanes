@@ -7,5 +7,6 @@ __pycache__/
 dist/
 .superpowers/
 research/
+.claude
 # Added by dagayn
-.dagayn/
+.dagayn
