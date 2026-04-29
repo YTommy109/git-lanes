@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from backend.models import Commit
 
@@ -19,7 +20,32 @@ LANE_COLORS: list[str] = [
 ]
 SPACING_X: float = 30.0
 SPACING_Y: float = 60.0
-MARGIN_TOP: float = 30.0
+MARGIN_TOP: float = 120.0
+
+NodeType = Literal["tip", "root", "merge", "regular"]
+LabelKind = Literal["head", "branch", "tag"]
+
+
+@dataclass
+class SvgLabel:
+    """ブランチ名・タグ・HEAD ラベルの種別付きデータ。"""
+
+    text: str
+    kind: LabelKind
+
+
+@dataclass
+class SvgBranchHeader:
+    """SVG ヘッダー行に描画するブランチ名ラベル。"""
+
+    cx: float
+    cy: float
+    labels: list[SvgLabel]
+    color: str
+    display_text: str = ""
+    is_head: bool = False
+    connector_to_x: float | None = None  # 実コミット円の cx（ダミー tip のみ設定）
+    connector_to_y: float | None = None  # 実コミット円の cy（ダミー tip のみ設定）
 
 
 @dataclass
@@ -39,6 +65,7 @@ class GraphLine:
     branch: GraphBranch
     color: str
     is_main: bool = False
+    is_head_branch: bool = False
     nodes: list[GraphNode] = field(default_factory=list)
     x: float = 0.0
     positioned: bool = False
@@ -73,7 +100,8 @@ class SvgNode:
     cy: float
     color: str
     commit: Commit
-    labels: list[str]
+    labels: list[SvgLabel]
+    node_type: NodeType = "regular"
 
 
 @dataclass
@@ -82,6 +110,7 @@ class SvgEdge:
 
     d: str
     color: str
+    is_main: bool = False
 
 
 @dataclass
@@ -90,5 +119,6 @@ class GraphResult:
 
     nodes: list[SvgNode]
     edges: list[SvgEdge]
+    branch_headers: list[SvgBranchHeader]
     canvas_width: float
     canvas_height: float

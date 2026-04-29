@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 from backend.models import Branch, Commit, Tag
-from backend.services.graph_builder_phases import (
+from backend.services.graph_builder_helpers import (
     _is_ready,  # noqa: F401  テストから graph_builder 経由でアクセスされる
-    build_layers,
 )
+from backend.services.graph_builder_phases import build_layers
 from backend.services.graph_coords import assign_coords, to_svg
 from backend.services.graph_models import (
     LANE_COLORS,
@@ -16,6 +16,7 @@ from backend.services.graph_models import (
     GraphLine,
     GraphNode,
     GraphResult,
+    SvgLabel,
 )
 
 
@@ -56,15 +57,15 @@ def _build_labels(
     branches: list[Branch],
     tags: list[Tag],
     head_hash: str | None,
-) -> dict[str, list[str]]:
+) -> dict[str, list[SvgLabel]]:
     """ブランチ・タグ・HEAD のラベル辞書を構築する。"""
-    labels: dict[str, list[str]] = {}
+    labels: dict[str, list[SvgLabel]] = {}
     if head_hash:
-        labels.setdefault(head_hash, []).insert(0, "HEAD")
+        labels.setdefault(head_hash, []).insert(0, SvgLabel(text="HEAD", kind="head"))
     for b in branches:
-        labels.setdefault(b.tip_hash, []).append(b.name)
+        labels.setdefault(b.tip_hash, []).append(SvgLabel(text=b.name, kind="branch"))
     for t in tags:
-        labels.setdefault(t.commit_hash, []).append(t.name)
+        labels.setdefault(t.commit_hash, []).append(SvgLabel(text=t.name, kind="tag"))
     return labels
 
 
@@ -73,15 +74,18 @@ def _build_layer0(
     layer: GraphLayer,
     commit_to_node: dict[str, GraphNode],
     children_map: dict[str, list[str]],
-    labels: dict[str, list[str]],
+    labels: dict[str, list[SvgLabel]],
     color_idx: list[int],
+    head_hash: str | None,
 ) -> None:
     """Phase 2: Layer 0 を構築し commit_to_node を初期化する。"""
     for tip in tips:
         color = LANE_COLORS[color_idx[0] % len(LANE_COLORS)]
         color_idx[0] += 1
-        branch = GraphBranch(color=color, refs=labels.get(tip.hash, []))
+        branch = GraphBranch(color=color, refs=[lbl.text for lbl in labels.get(tip.hash, [])])
         line = GraphLine(branch=branch, color=color, is_main=True)
+        if tip.hash == head_hash:
+            line.is_head_branch = True
         branch.main_line = line
         node = GraphNode(
             commit=tip,
@@ -104,7 +108,9 @@ def build_graph(
 ) -> GraphResult:
     """gitup GIGraph アルゴリズムでグラフを構築して SVG データを返す。"""
     if not commits:
-        return GraphResult(nodes=[], edges=[], canvas_width=300.0, canvas_height=100.0)
+        return GraphResult(
+            nodes=[], edges=[], branch_headers=[], canvas_width=300.0, canvas_height=100.0
+        )
 
     commit_map = {c.hash: c for c in commits}
     children_map = _build_children_map(parents)
@@ -112,15 +118,17 @@ def build_graph(
 
     tips = _collect_tips(commit_map, branches, tags, head_hash)
     if not tips:
-        return GraphResult(nodes=[], edges=[], canvas_width=300.0, canvas_height=100.0)
+        return GraphResult(
+            nodes=[], edges=[], branch_headers=[], canvas_width=300.0, canvas_height=100.0
+        )
 
     layer0 = GraphLayer(index=0)
     commit_to_node: dict[str, GraphNode] = {}
     color_idx = [0]
-    _build_layer0(tips, layer0, commit_to_node, children_map, labels, color_idx)
+    _build_layer0(tips, layer0, commit_to_node, children_map, labels, color_idx, head_hash)
 
-    layers, edge_colors = build_layers(
+    layers, edge_colors, edge_is_main = build_layers(
         layer0, commit_to_node, children_map, parents, commit_map, color_idx
     )
     assign_coords(layers)
-    return to_svg(layers, parents, commit_to_node, edge_colors, labels)
+    return to_svg(layers, parents, commit_to_node, edge_colors, edge_is_main, labels)

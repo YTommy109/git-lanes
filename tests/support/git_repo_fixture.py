@@ -73,6 +73,37 @@ def make_two_branch_repo(path: Path) -> Path:
     return path
 
 
+def make_repo_with_remote(path: Path) -> tuple[Path, str, str]:
+    """ローカル main とリモートトラッキング origin/main を持つリポジトリを作成する。
+
+    Args:
+        path: リポジトリのルートディレクトリ。
+
+    Returns:
+        (リポジトリパス, main 先端ハッシュ, origin/main 先端ハッシュ)。
+        origin/main は main より 1 コミット後ろを指す。
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    repo = pygit2.init_repository(str(path), False)
+    repo.set_head("refs/heads/main")
+    sig = pygit2.Signature("テスト", "t@example.com", int(time.time()), 0)
+
+    (path / "a.txt").write_text("a\n", encoding="utf-8")
+    repo.index.add("a.txt")
+    repo.index.write()
+    oid1 = repo.create_commit("refs/heads/main", sig, sig, "first", repo.index.write_tree(), [])
+    # origin/main は first コミットを指す（main より 1 コミット遅れ）
+    repo.create_reference("refs/remotes/origin/main", oid1, False)
+
+    (path / "b.txt").write_text("b\n", encoding="utf-8")
+    repo.index.add("b.txt")
+    repo.index.write()
+    oid2 = repo.create_commit(
+        "refs/heads/main", sig, sig, "second", repo.index.write_tree(), [oid1]
+    )
+    return path, str(oid2), str(oid1)
+
+
 def make_tagged_repo(path: Path) -> tuple[Path, str, str]:
     """軽量タグと注釈付きタグを持つリポジトリを作成する。
 
