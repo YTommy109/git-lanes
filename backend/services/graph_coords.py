@@ -10,6 +10,7 @@ from backend.services.graph_models import (
     GraphLayer,
     GraphNode,
     GraphResult,
+    NodeType,
     SvgEdge,
     SvgLabel,
     SvgNode,
@@ -34,10 +35,36 @@ def assign_coords(layers: list[GraphLayer]) -> None:
             last_x = x
 
 
+def _resolve_node_type(
+    node: GraphNode,
+    layer: GraphLayer,
+    parents: dict[str, list[str]],
+) -> NodeType:
+    """ノードの種別を返す。
+
+    Args:
+        node: 種別を判定する対象ノード。
+        layer: ノードが属するレイヤー。
+        parents: コミットハッシュをキー、親ハッシュのリストを値とする辞書。
+
+    Returns:
+        判定された NodeType 文字列。
+    """
+    if layer.index == 0 and not node.dummy:
+        return "tip"
+    parent_hashes = parents.get(node.commit.hash, [])
+    if not parent_hashes:
+        return "root"
+    if len(parent_hashes) >= 2:
+        return "merge"
+    return "regular"
+
+
 def _make_svg_node(
     node: GraphNode,
     layer: GraphLayer,
-    labels_by_hash: dict[str, list[SvgLabel]],
+    parents: dict[str, list[str]],
+    labels: dict[str, list[SvgLabel]],
 ) -> SvgNode:
     """単一ノードの SvgNode を生成する。"""
     return SvgNode(
@@ -45,7 +72,8 @@ def _make_svg_node(
         cy=layer.y,
         color=node.primary_line.color,
         commit=node.commit,
-        labels=labels_by_hash.get(node.commit.hash, []),
+        labels=labels.get(node.commit.hash, []),
+        node_type=_resolve_node_type(node, layer, parents),
     )
 
 
@@ -88,7 +116,7 @@ def to_svg(
         for node in layer.nodes:
             if node.dummy:
                 continue
-            svg_nodes.append(_make_svg_node(node, layer, labels_by_hash))
+            svg_nodes.append(_make_svg_node(node, layer, parents, labels_by_hash))
             svg_edges.extend(
                 _make_svg_edges(node, layer, parents, commit_to_node, edge_colors, edge_is_main)
             )

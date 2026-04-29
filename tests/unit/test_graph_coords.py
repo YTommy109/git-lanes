@@ -3,7 +3,11 @@
 
 from backend.models import Branch, Commit
 from backend.services.graph_builder import build_graph
-from backend.services.graph_coords import assign_coords
+from backend.services.graph_coords import (
+    _make_svg_node,
+    _resolve_node_type,
+    assign_coords,
+)
 from backend.services.graph_models import (
     MARGIN_TOP,
     SPACING_Y,
@@ -14,6 +18,26 @@ from backend.services.graph_models import (
 )
 
 _REPO_ID = "test-repo"
+
+
+def make_commit(prefix: str) -> Commit:
+    """テスト用 Commit をハッシュプレフィックスから生成する。"""
+    h = prefix * 40
+    return Commit(
+        hash=h[:40],
+        short_hash=h[:7],
+        message="msg",
+        author_name="a",
+        author_email="a@b.c",
+        committed_at=1,
+        repo_id=_REPO_ID,
+    )
+
+
+def make_line() -> GraphLine:
+    """テスト用 GraphLine を生成する。"""
+    branch = GraphBranch(color="#aaa")
+    return GraphLine(branch=branch, color="#aaa")
 
 
 def _c(prefix: str, at: int) -> Commit:
@@ -138,3 +162,61 @@ def test_build_graph_マージ第2親のエッジが描画される():
     assert "f" * 40 in node_by_hash
     # M の cx は F の cx と異なる（別レーンに配置される）
     assert node_by_hash["m" * 40].cx != node_by_hash["f" * 40].cx
+
+
+def test_resolve_node_type_layer0実ノードはtip():
+    """Layer 0 の実ノード（dummy=False）は "tip" を返す。"""
+    # --- Arrange ---
+    layer = GraphLayer(index=0)
+    node = GraphNode(commit=make_commit("a"), layer=layer, primary_line=make_line(), dummy=False)
+    # --- Act ---
+    result = _resolve_node_type(node, layer, parents={})
+    # --- Assert ---
+    assert result == "tip"
+
+
+def test_resolve_node_type_親なしはroot():
+    """親コミットが存在しないノードは "root" を返す。"""
+    # --- Arrange ---
+    layer = GraphLayer(index=1)
+    node = GraphNode(commit=make_commit("b"), layer=layer, primary_line=make_line(), dummy=False)
+    # --- Act ---
+    result = _resolve_node_type(node, layer, parents={})
+    # --- Assert ---
+    assert result == "root"
+
+
+def test_resolve_node_type_親2つ以上はmerge():
+    """親コミットが 2 つ以上のノードは "merge" を返す。"""
+    # --- Arrange ---
+    layer = GraphLayer(index=2)
+    node = GraphNode(commit=make_commit("c"), layer=layer, primary_line=make_line(), dummy=False)
+    parents = {"c" * 40: ["d" * 40, "e" * 40]}
+    # --- Act ---
+    result = _resolve_node_type(node, layer, parents=parents)
+    # --- Assert ---
+    assert result == "merge"
+
+
+def test_resolve_node_type_通常ノードはregular():
+    """親が 1 つのノードは "regular" を返す。"""
+    # --- Arrange ---
+    layer = GraphLayer(index=1)
+    node = GraphNode(commit=make_commit("f"), layer=layer, primary_line=make_line(), dummy=False)
+    parents = {"f" * 40: ["g" * 40]}
+    # --- Act ---
+    result = _resolve_node_type(node, layer, parents=parents)
+    # --- Assert ---
+    assert result == "regular"
+
+
+def test_make_svg_node_node_typeが設定される():
+    """_make_svg_node が SvgNode.node_type を正しく設定する。"""
+    # --- Arrange ---
+    layer = GraphLayer(index=0)
+    node = GraphNode(commit=make_commit("h"), layer=layer, primary_line=make_line(), dummy=False)
+    node.x = 30.0
+    # --- Act ---
+    svg_node = _make_svg_node(node, layer, parents={}, labels={})
+    # --- Assert ---
+    assert svg_node.node_type == "tip"
