@@ -113,7 +113,9 @@ def _make_branch_headers(
 
     result: list[SvgBranchHeader] = []
     for node in layer0.nodes:
-        lbls = list(labels_by_hash.get(node.commit.hash, []))
+        all_lbls = list(labels_by_hash.get(node.commit.hash, []))
+        # タグのみのノードはブランチヘッダー行に表示しない（コミット横のバッジで表示済み）
+        lbls = [lbl for lbl in all_lbls if lbl.kind != "tag"]
         if not lbls:
             continue
         is_head = any(lbl.kind == "head" for lbl in lbls)
