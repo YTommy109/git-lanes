@@ -148,3 +148,66 @@ def test_watch_service_start_stop_が_observer_を制御する(event_bus, mock_e
         mock_start.assert_called_once()
         mock_stop.assert_called_once()
         mock_join.assert_called_once()
+
+
+def test_on_created_がデバウンスを呼ぶ(tmp_path, event_bus, mock_engine):
+    # --- Arrange ---
+    from watchdog.events import FileCreatedEvent
+
+    call_count = 0
+
+    class CountingHandler(GitEventHandler):
+        def _sync(self) -> None:
+            nonlocal call_count
+            call_count += 1
+
+    handler = CountingHandler("repo1", str(tmp_path), event_bus, mock_engine)
+
+    # --- Act ---
+    handler.on_created(FileCreatedEvent(str(tmp_path / "newfile")))
+    time.sleep(0.7)
+
+    # --- Assert ---
+    assert call_count == 1
+
+
+def test_on_deleted_がデバウンスを呼ぶ(tmp_path, event_bus, mock_engine):
+    # --- Arrange ---
+    from watchdog.events import FileDeletedEvent
+
+    call_count = 0
+
+    class CountingHandler(GitEventHandler):
+        def _sync(self) -> None:
+            nonlocal call_count
+            call_count += 1
+
+    handler = CountingHandler("repo1", str(tmp_path), event_bus, mock_engine)
+
+    # --- Act ---
+    handler.on_deleted(FileDeletedEvent(str(tmp_path / "gone")))
+    time.sleep(0.7)
+
+    # --- Assert ---
+    assert call_count == 1
+
+
+def test_on_moved_がデバウンスを呼ぶ(tmp_path, event_bus, mock_engine):
+    # --- Arrange ---
+    from watchdog.events import FileMovedEvent
+
+    call_count = 0
+
+    class CountingHandler(GitEventHandler):
+        def _sync(self) -> None:
+            nonlocal call_count
+            call_count += 1
+
+    handler = CountingHandler("repo1", str(tmp_path), event_bus, mock_engine)
+
+    # --- Act ---
+    handler.on_moved(FileMovedEvent(str(tmp_path / "old"), str(tmp_path / "new")))
+    time.sleep(0.7)
+
+    # --- Assert ---
+    assert call_count == 1

@@ -47,10 +47,8 @@ def _place_parent(
         # 同一レイヤーに非ダミーノードが既存 → 別パスが先に確定済み（GitUp と同等）
         line.nodes.append(existing)
     elif ph in commit_map:
-        # ダミーが既存の場合はそのレーン（primary_line）を引き継いで x 座標を保持する
-        primary = existing.primary_line if (existing and existing.dummy) else line
         ready = _is_ready(ph, curr, commit_to_node, children_map)
-        pnode = GraphNode(commit=commit_map[ph], layer=curr, primary_line=primary, dummy=not ready)
+        pnode = GraphNode(commit=commit_map[ph], layer=curr, primary_line=line, dummy=not ready)
         line.nodes.append(pnode)
         curr.nodes.append(pnode)
         commit_to_node[ph] = pnode

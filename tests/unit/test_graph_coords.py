@@ -220,3 +220,38 @@ def test_make_svg_node_node_typeが設定される():
     svg_node = _make_svg_node(node, layer, parents={}, labels={})
     # --- Assert ---
     assert svg_node.node_type == "tip"
+
+
+def test_assign_coords_配置済みラインのxが衝突するとき右にずらす():
+    """primary_line.positioned=True で x が last_x 以下のとき last_x+1 に補正する（line 32）。"""
+    # --- Arrange ---
+    line_a = make_line()
+    line_b = make_line()
+    # line_b は既に x=0.0 に positioned 済みとしておく（後から同一レイヤーに入ると衝突）
+    line_b.x = 0.0
+    line_b.positioned = True
+
+    layer = GraphLayer(index=0)
+    node_a = GraphNode(commit=make_commit("a"), layer=layer, primary_line=line_a)
+    node_b = GraphNode(commit=make_commit("b"), layer=layer, primary_line=line_b)
+    layer.nodes.extend([node_a, node_b])
+
+    # --- Act ---
+    assign_coords([layer])
+
+    # --- Assert ---
+    assert node_b.x > node_a.x, "衝突時は右にずれるべき"
+
+
+def test_build_graph_親が不明なコミットはエッジをスキップする():
+    """親が commit_to_node に存在しない場合エッジが生成されない（graph_coords.py line 96）。"""
+    # --- Arrange ---: commit_a の親は存在しないコミット
+    a = make_commit("a")
+    parents = {"a" * 40: ["z" * 40]}  # "z" は commits に含まれない
+    branches = [Branch(name="main", repo_id="test", tip_hash="a" * 40, is_remote=0)]
+
+    # --- Act ---
+    result = build_graph([a], parents, branches, [])
+
+    # --- Assert ---
+    assert result.edges == [], "存在しない親へのエッジは生成されないべき"

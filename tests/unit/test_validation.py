@@ -36,3 +36,13 @@ def test_parse_commit_hash_normalizes_case():
 
     # --- Assert ---
     assert result == h
+
+
+def test_parse_commit_hash_rejects_invalid():
+    # --- Arrange ---
+    value = "not-a-hash"
+
+    # --- Act & Assert ---
+    with pytest.raises(HTTPException) as exc:
+        parse_commit_hash(value)
+    assert exc.value.status_code == 404

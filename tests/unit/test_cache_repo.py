@@ -421,3 +421,38 @@ def test_purge_graph_data_タグも削除される(session):
 
     # --- Assert ---
     assert cache_repo.list_tags(session, "r1") == []
+
+
+def test_list_all_commits_全件を返す(session):
+    # --- Arrange ---
+    _add_repo(session)
+    _add_commit(session, "r1", "a" * 40, committed_at=2)
+    _add_commit(session, "r1", "b" * 40, committed_at=1)
+
+    # --- Act ---
+    result = cache_repo.list_all_commits(session, "r1")
+
+    # --- Assert ---
+    assert len(result) == 2
+    assert result[0].hash == "a" * 40  # 新しい順
+
+
+def test_get_repository_by_path_存在するパスを返す(session):
+    # --- Arrange ---
+    _add_repo(session)
+
+    # --- Act ---
+    result = cache_repo.get_repository_by_path(session, "/path/r1")
+
+    # --- Assert ---
+    assert result is not None
+    assert result.id == "r1"
+
+
+def test_update_sync_state_存在しないリポジトリは何もしない(session):
+    """repo is None のとき早期 return する（cache_repo.py line 183）。"""
+    # --- Arrange / Act ---
+    cache_repo.update_sync_state(session, "nonexistent", "abc")
+
+    # --- Assert ---: 例外が発生しないことのみ確認
+    assert cache_repo.get_repository(session, "nonexistent") is None
