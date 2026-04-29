@@ -29,7 +29,7 @@
         {% for header in branch_headers %}
           {% if header.connector_to_y %}
             <line
-              x1="{{ header.cx }}" y1="{{ header.cy }}"
+              x1="{{ header.cx }}" y1="{{ header.cy - 14 }}"
               x2="{{ header.connector_to_x }}" y2="{{ header.connector_to_y }}"
               stroke="{{ header.color }}"
               stroke-width="1.5"
@@ -38,7 +38,7 @@
             />
           {% endif %}
           <text
-            transform="translate({{ header.cx }}, {{ header.cy }}) rotate(-45)"
+            transform="translate({{ header.cx }}, {{ header.cy - 14 }}) rotate(-45)"
             font-size="11"
             fill="{{ header.color }}"
             {% if header.is_head %}font-weight="bold"{% endif %}
