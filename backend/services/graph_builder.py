@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 from backend.models import Branch, Commit, Tag
-from backend.services.graph_builder_phases import (
+from backend.services.graph_builder_helpers import (
     _is_ready,  # noqa: F401  テストから graph_builder 経由でアクセスされる
-    build_layers,
 )
+from backend.services.graph_builder_phases import build_layers
 from backend.services.graph_coords import assign_coords, to_svg
 from backend.services.graph_models import (
     LANE_COLORS,
@@ -119,8 +119,8 @@ def build_graph(
     color_idx = [0]
     _build_layer0(tips, layer0, commit_to_node, children_map, labels, color_idx)
 
-    layers, edge_colors = build_layers(
+    layers, edge_colors, edge_is_main = build_layers(
         layer0, commit_to_node, children_map, parents, commit_map, color_idx
     )
     assign_coords(layers)
-    return to_svg(layers, parents, commit_to_node, edge_colors, labels)
+    return to_svg(layers, parents, commit_to_node, edge_colors, edge_is_main, labels)

@@ -11,6 +11,7 @@ from backend.services.graph_models import (
     GraphNode,
     GraphResult,
     SvgEdge,
+    SvgLabel,
     SvgNode,
 )
 
@@ -36,7 +37,7 @@ def assign_coords(layers: list[GraphLayer]) -> None:
 def _make_svg_node(
     node: GraphNode,
     layer: GraphLayer,
-    labels_by_hash: dict[str, list[str]],
+    labels_by_hash: dict[str, list[SvgLabel]],
 ) -> SvgNode:
     """単一ノードの SvgNode を生成する。"""
     return SvgNode(
@@ -54,6 +55,7 @@ def _make_svg_edges(
     parents: dict[str, list[str]],
     commit_to_node: dict[str, GraphNode],
     edge_colors: dict[tuple[str, str], str],
+    edge_is_main: dict[tuple[str, str], bool],
 ) -> list[SvgEdge]:
     """単一ノードから親へのエッジリストを生成する。ダミー親はスキップする。"""
     edges: list[SvgEdge] = []
@@ -62,9 +64,12 @@ def _make_svg_edges(
         if pnode is None or pnode.dummy:
             continue
         color = edge_colors.get((node.commit.hash, ph), node.primary_line.color)
+        is_main = edge_is_main.get((node.commit.hash, ph), False)
         x1, y1 = node.x * SPACING_X, layer.y
         x2, y2 = pnode.x * SPACING_X, pnode.layer.y
-        edges.append(SvgEdge(d=f"M {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f}", color=color))
+        edges.append(
+            SvgEdge(d=f"M {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f}", color=color, is_main=is_main)
+        )
     return edges
 
 
@@ -73,7 +78,8 @@ def to_svg(
     parents: dict[str, list[str]],
     commit_to_node: dict[str, GraphNode],
     edge_colors: dict[tuple[str, str], str],
-    labels_by_hash: dict[str, list[str]],
+    edge_is_main: dict[tuple[str, str], bool],
+    labels_by_hash: dict[str, list[SvgLabel]],
 ) -> GraphResult:
     """座標付きレイヤーを SvgNode/SvgEdge に変換して GraphResult を返す。"""
     svg_nodes: list[SvgNode] = []
@@ -83,7 +89,9 @@ def to_svg(
             if node.dummy:
                 continue
             svg_nodes.append(_make_svg_node(node, layer, labels_by_hash))
-            svg_edges.extend(_make_svg_edges(node, layer, parents, commit_to_node, edge_colors))
+            svg_edges.extend(
+                _make_svg_edges(node, layer, parents, commit_to_node, edge_colors, edge_is_main)
+            )
     max_cx = max((n.cx for n in svg_nodes), default=0.0)
     max_cy = max((n.cy for n in svg_nodes), default=0.0)
     return GraphResult(
