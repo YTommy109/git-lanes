@@ -91,7 +91,7 @@ def _build_layer0(
             commit=tip,
             layer=layer,
             primary_line=line,
-            dummy=not _is_ready(tip.hash, layer, commit_to_node, children_map),
+            dummy=False,  # branch tip は常に実ノード（dummy 化すると Layer 0 に表示されない）
         )
         branch.tip_node = node
         line.nodes.append(node)

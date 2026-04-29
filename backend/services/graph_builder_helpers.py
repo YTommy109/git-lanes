@@ -43,8 +43,8 @@ def _place_parent(
     edge_colors[(node.commit.hash, ph)] = line.color
     edge_is_main[(node.commit.hash, ph)] = line.is_head_branch
     existing = commit_to_node.get(ph)
-    if existing and not existing.dummy and existing.layer is curr:
-        # 同一レイヤーに非ダミーノードが既存 → 別パスが先に確定済み（GitUp と同等）
+    if existing and not existing.dummy:
+        # 非ダミーノードが既存 → 別パスまたは Layer 0 の tip として確定済み
         line.nodes.append(existing)
     elif ph in commit_map:
         ready = _is_ready(ph, curr, commit_to_node, children_map)
