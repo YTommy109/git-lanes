@@ -25,6 +25,17 @@
         role="img"
         aria-label="コミット履歴"
       >
+        {# ブランチ名ヘッダー行（最上位に一行整列・45° 回転テキスト） #}
+        {% for header in branch_headers %}
+          <text
+            transform="translate({{ header.cx }}, {{ header.cy }}) rotate(-45)"
+            font-size="11"
+            fill="{{ header.color }}"
+            {% if header.is_head %}font-weight="bold"{% endif %}
+            pointer-events="none"
+          >{{ header.display_text }}</text>
+        {% endfor %}
+
         {# エッジ（コミット間の接続線） #}
         {% for edge in edges %}
           <path
@@ -61,32 +72,28 @@
               <circle cx="{{ node.cx }}" cy="{{ node.cy }}" r="5"
                       fill="{{ node.color }}"/>
             {% endif %}
-            {# バッジ形式のラベル（複数ラベルは横にずらして表示） #}
+            {# バッジ形式のラベル（branch は省略、head と tag のみ表示） #}
             {% if node.labels %}
               {% set ns = namespace(x_offset=0) %}
               {% for label in node.labels %}
-                {% set badge_width = label.text | length * 7 + 8 %}
-                {% if label.kind == "head" %}
-                  <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
-                        width="{{ badge_width }}" height="16"
-                        rx="4" fill="{{ node.color }}" pointer-events="none"/>
-                  <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
-                        font-size="11" fill="white" font-weight="bold"
-                        pointer-events="none">{{ label.text }}</text>
-                {% elif label.kind == "branch" %}
-                  <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
-                        width="{{ badge_width }}" height="16"
-                        rx="4" fill="{{ node.color }}" opacity="0.65" pointer-events="none"/>
-                  <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
-                        font-size="11" fill="white" pointer-events="none">{{ label.text }}</text>
-                {% elif label.kind == "tag" %}
-                  <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
-                        width="{{ badge_width }}" height="16"
-                        rx="7" fill="none" stroke="#888" stroke-width="1" pointer-events="none"/>
-                  <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
-                        font-size="11" fill="#888" pointer-events="none">{{ label.text }}</text>
+                {% if label.kind != "branch" %}
+                  {% set badge_width = label.text | length * 7 + 8 %}
+                  {% if label.kind == "head" %}
+                    <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
+                          width="{{ badge_width }}" height="16"
+                          rx="4" fill="{{ node.color }}" pointer-events="none"/>
+                    <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
+                          font-size="11" fill="white" font-weight="bold"
+                          pointer-events="none">{{ label.text }}</text>
+                  {% elif label.kind == "tag" %}
+                    <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
+                          width="{{ badge_width }}" height="16"
+                          rx="7" fill="none" stroke="#888" stroke-width="1" pointer-events="none"/>
+                    <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
+                          font-size="11" fill="#888" pointer-events="none">{{ label.text }}</text>
+                  {% endif %}
+                  {% set ns.x_offset = ns.x_offset + badge_width + 4 %}
                 {% endif %}
-                {% set ns.x_offset = ns.x_offset + badge_width + 4 %}
               {% endfor %}
             {% endif %}
           </g>

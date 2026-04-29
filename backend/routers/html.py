@@ -58,6 +58,7 @@ async def graph_page(
         "repo_name": rec.name,
         "nodes": result.nodes,
         "edges": result.edges,
+        "branch_headers": result.branch_headers,
         "svg_width": result.canvas_width,
         "svg_height": result.canvas_height,
         "repos": cache_repo.list_repositories(session),

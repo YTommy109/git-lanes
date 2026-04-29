@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from backend.services.graph_builder_helpers import _apply_overlap_avoidance, _make_branch_headers
 from backend.services.graph_models import (
     MARGIN_TOP,
     SPACING_X,
@@ -23,6 +24,8 @@ def assign_coords(layers: list[GraphLayer]) -> None:
         layer.y = MARGIN_TOP + layer.index * SPACING_Y
         last_x = 0.0
         for node in layer.nodes:
+            if node.primary_line.is_main:
+                last_x += 1.0  # メインラインに追加スペース（gitup の branchMainLine += 2 相当）
             if node.primary_line.positioned:
                 x = node.primary_line.x
                 if x <= last_x:
@@ -122,9 +125,12 @@ def to_svg(
             )
     max_cx = max((n.cx for n in svg_nodes), default=0.0)
     max_cy = max((n.cy for n in svg_nodes), default=0.0)
+    branch_headers = _make_branch_headers(layers, labels_by_hash)
+    _apply_overlap_avoidance(branch_headers)
     return GraphResult(
         nodes=svg_nodes,
         edges=svg_edges,
+        branch_headers=branch_headers,
         canvas_width=max_cx + 150.0,
         canvas_height=max_cy + 80.0,
     )

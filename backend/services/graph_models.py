@@ -20,7 +20,7 @@ LANE_COLORS: list[str] = [
 ]
 SPACING_X: float = 30.0
 SPACING_Y: float = 60.0
-MARGIN_TOP: float = 30.0
+MARGIN_TOP: float = 120.0
 
 NodeType = Literal["tip", "root", "merge", "regular"]
 LabelKind = Literal["head", "branch", "tag"]
@@ -32,6 +32,18 @@ class SvgLabel:
 
     text: str
     kind: LabelKind
+
+
+@dataclass
+class SvgBranchHeader:
+    """SVG ヘッダー行に描画するブランチ名ラベル。"""
+
+    cx: float
+    cy: float
+    labels: list[SvgLabel]
+    color: str
+    display_text: str = ""
+    is_head: bool = False
 
 
 @dataclass
@@ -105,5 +117,6 @@ class GraphResult:
 
     nodes: list[SvgNode]
     edges: list[SvgEdge]
+    branch_headers: list[SvgBranchHeader]
     canvas_width: float
     canvas_height: float

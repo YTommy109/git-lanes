@@ -108,7 +108,9 @@ def build_graph(
 ) -> GraphResult:
     """gitup GIGraph アルゴリズムでグラフを構築して SVG データを返す。"""
     if not commits:
-        return GraphResult(nodes=[], edges=[], canvas_width=300.0, canvas_height=100.0)
+        return GraphResult(
+            nodes=[], edges=[], branch_headers=[], canvas_width=300.0, canvas_height=100.0
+        )
 
     commit_map = {c.hash: c for c in commits}
     children_map = _build_children_map(parents)
@@ -116,7 +118,9 @@ def build_graph(
 
     tips = _collect_tips(commit_map, branches, tags, head_hash)
     if not tips:
-        return GraphResult(nodes=[], edges=[], canvas_width=300.0, canvas_height=100.0)
+        return GraphResult(
+            nodes=[], edges=[], branch_headers=[], canvas_width=300.0, canvas_height=100.0
+        )
 
     layer0 = GraphLayer(index=0)
     commit_to_node: dict[str, GraphNode] = {}
