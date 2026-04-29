@@ -87,15 +87,11 @@ def _build_layer0(
         if tip.hash == head_hash:
             line.is_head_branch = True
         branch.main_line = line
-        tip_labels = labels.get(tip.hash, [])
-        is_branch_tip = any(lbl.kind in ("branch", "head") for lbl in tip_labels)
-        is_ready = _is_ready(tip.hash, layer, commit_to_node, children_map)
-        is_dummy = not is_branch_tip and not is_ready
         node = GraphNode(
             commit=tip,
             layer=layer,
             primary_line=line,
-            dummy=is_dummy,
+            dummy=not _is_ready(tip.hash, layer, commit_to_node, children_map),
         )
         branch.tip_node = node
         line.nodes.append(node)

@@ -27,6 +27,16 @@
       >
         {# ブランチ名ヘッダー行（最上位に一行整列・45° 回転テキスト） #}
         {% for header in branch_headers %}
+          {% if header.connector_to_y %}
+            <line
+              x1="{{ header.cx }}" y1="{{ header.cy }}"
+              x2="{{ header.connector_to_x }}" y2="{{ header.connector_to_y }}"
+              stroke="{{ header.color }}"
+              stroke-width="1.5"
+              stroke-dasharray="4,4"
+              opacity="0.6"
+            />
+          {% endif %}
           <text
             transform="translate({{ header.cx }}, {{ header.cy }}) rotate(-45)"
             font-size="11"

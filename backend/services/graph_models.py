@@ -44,6 +44,8 @@ class SvgBranchHeader:
     color: str
     display_text: str = ""
     is_head: bool = False
+    connector_to_x: float | None = None  # 実コミット円の cx（ダミー tip のみ設定）
+    connector_to_y: float | None = None  # 実コミット円の cy（ダミー tip のみ設定）
 
 
 @dataclass
