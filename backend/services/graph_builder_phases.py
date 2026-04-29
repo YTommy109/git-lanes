@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from backend.models import Commit
 from backend.services.graph_builder_helpers import (
-    _is_ready,
     _place_parent,
     _realize_dummy,
 )
@@ -41,8 +40,15 @@ def _process_ready_node(
             branch.main_line = line
             line.nodes.append(node)
         _place_parent(
-            ph, line, node, curr, commit_to_node, children_map, commit_map,
-            edge_colors, edge_is_main,
+            ph,
+            line,
+            node,
+            curr,
+            commit_to_node,
+            children_map,
+            commit_map,
+            edge_colors,
+            edge_is_main,
         )
 
 
@@ -63,8 +69,15 @@ def _process_layer(
             _realize_dummy(node, curr, commit_to_node, children_map)
         else:
             _process_ready_node(
-                node, curr, commit_to_node, children_map, parents,
-                commit_map, color_idx, edge_colors, edge_is_main,
+                node,
+                curr,
+                commit_to_node,
+                children_map,
+                parents,
+                commit_map,
+                color_idx,
+                edge_colors,
+                edge_is_main,
             )
 
 
@@ -90,8 +103,15 @@ def build_layers(
     while True:
         curr = GraphLayer(index=len(layers))
         _process_layer(
-            prev, curr, commit_to_node, children_map, parents,
-            commit_map, color_idx, edge_colors, edge_is_main,
+            prev,
+            curr,
+            commit_to_node,
+            children_map,
+            parents,
+            commit_map,
+            color_idx,
+            edge_colors,
+            edge_is_main,
         )
         if not curr.nodes:
             break

@@ -158,4 +158,58 @@ def test_build_graph_ブランチラベルがTIPノードに付く():
 
     # --- Assert ---
     tip_node = next(n for n in result.nodes if n.commit.hash == "b" * 40)
-    assert "main" in tip_node.labels
+    assert any(lbl.text == "main" for lbl in tip_node.labels)
+
+
+def test_build_graph_ブランチラベルがSvgLabelで返る():
+    # --- Arrange ---
+    commits = [_c("b", 2), _c("a", 1)]
+    parents = {"b" * 40: ["a" * 40]}
+    branches = [_b("main", "b")]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [])
+
+    # --- Assert ---
+    tip_node = next(n for n in result.nodes if n.commit.hash == "b" * 40)
+    assert any(lbl.text == "main" and lbl.kind == "branch" for lbl in tip_node.labels)
+
+
+def test_build_graph_HEADラベルのkindはhead():
+    # --- Arrange ---
+    commits = [_c("b", 2), _c("a", 1)]
+    parents = {"b" * 40: ["a" * 40]}
+    branches = [_b("main", "b")]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [], head_hash="b" * 40)
+
+    # --- Assert ---
+    tip_node = next(n for n in result.nodes if n.commit.hash == "b" * 40)
+    assert any(lbl.text == "HEAD" and lbl.kind == "head" for lbl in tip_node.labels)
+
+
+def test_build_graph_HEADブランチのエッジにis_mainがつく():
+    # --- Arrange ---
+    commits = [_c("b", 2), _c("a", 1)]
+    parents = {"b" * 40: ["a" * 40]}
+    branches = [_b("main", "b")]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [], head_hash="b" * 40)
+
+    # --- Assert ---
+    assert any(e.is_main for e in result.edges)
+
+
+def test_build_graph_非HEADブランチエッジのis_mainはFalse():
+    # --- Arrange ---
+    commits = [_c("b", 2), _c("a", 1)]
+    parents = {"b" * 40: ["a" * 40]}
+    branches = [_b("main", "b")]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [])  # head_hash なし
+
+    # --- Assert ---
+    assert all(not e.is_main for e in result.edges)

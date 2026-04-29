@@ -16,6 +16,7 @@ from backend.services.graph_models import (
     GraphLine,
     GraphNode,
     GraphResult,
+    SvgLabel,
 )
 
 
@@ -56,15 +57,15 @@ def _build_labels(
     branches: list[Branch],
     tags: list[Tag],
     head_hash: str | None,
-) -> dict[str, list[str]]:
+) -> dict[str, list[SvgLabel]]:
     """ブランチ・タグ・HEAD のラベル辞書を構築する。"""
-    labels: dict[str, list[str]] = {}
+    labels: dict[str, list[SvgLabel]] = {}
     if head_hash:
-        labels.setdefault(head_hash, []).insert(0, "HEAD")
+        labels.setdefault(head_hash, []).insert(0, SvgLabel(text="HEAD", kind="head"))
     for b in branches:
-        labels.setdefault(b.tip_hash, []).append(b.name)
+        labels.setdefault(b.tip_hash, []).append(SvgLabel(text=b.name, kind="branch"))
     for t in tags:
-        labels.setdefault(t.commit_hash, []).append(t.name)
+        labels.setdefault(t.commit_hash, []).append(SvgLabel(text=t.name, kind="tag"))
     return labels
 
 
@@ -73,15 +74,18 @@ def _build_layer0(
     layer: GraphLayer,
     commit_to_node: dict[str, GraphNode],
     children_map: dict[str, list[str]],
-    labels: dict[str, list[str]],
+    labels: dict[str, list[SvgLabel]],
     color_idx: list[int],
+    head_hash: str | None,
 ) -> None:
     """Phase 2: Layer 0 を構築し commit_to_node を初期化する。"""
     for tip in tips:
         color = LANE_COLORS[color_idx[0] % len(LANE_COLORS)]
         color_idx[0] += 1
-        branch = GraphBranch(color=color, refs=labels.get(tip.hash, []))
+        branch = GraphBranch(color=color, refs=[lbl.text for lbl in labels.get(tip.hash, [])])
         line = GraphLine(branch=branch, color=color, is_main=True)
+        if tip.hash == head_hash:
+            line.is_head_branch = True
         branch.main_line = line
         node = GraphNode(
             commit=tip,
@@ -117,7 +121,7 @@ def build_graph(
     layer0 = GraphLayer(index=0)
     commit_to_node: dict[str, GraphNode] = {}
     color_idx = [0]
-    _build_layer0(tips, layer0, commit_to_node, children_map, labels, color_idx)
+    _build_layer0(tips, layer0, commit_to_node, children_map, labels, color_idx, head_hash)
 
     layers, edge_colors, edge_is_main = build_layers(
         layer0, commit_to_node, children_map, parents, commit_map, color_idx
