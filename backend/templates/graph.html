@@ -30,7 +30,7 @@
           <path
             d="{{ edge.d }}"
             stroke="{{ edge.color }}"
-            stroke-width="2.5"
+            stroke-width="{% if edge.is_main %}4{% else %}2{% endif %}"
             fill="none"
           />
         {% endfor %}
@@ -50,16 +50,44 @@
                on mouseleave set #commit-tooltip.style.display to 'none'
                on click remove .selected from .commit-node then add .selected to me"
           >
-            <circle cx="{{ node.cx }}" cy="{{ node.cy }}" r="8" fill="{{ node.color }}"/>
+            {# ノード種別に応じた円の描画 #}
+            {% if node.node_type in ("tip", "root") %}
+              <circle cx="{{ node.cx }}" cy="{{ node.cy }}" r="9"
+                      fill="none" stroke="{{ node.color }}" stroke-width="2.5"/>
+            {% elif node.node_type == "merge" %}
+              <circle cx="{{ node.cx }}" cy="{{ node.cy }}" r="7"
+                      fill="none" stroke="{{ node.color }}" stroke-width="2.5"/>
+            {% else %}
+              <circle cx="{{ node.cx }}" cy="{{ node.cy }}" r="5"
+                      fill="{{ node.color }}"/>
+            {% endif %}
+            {# バッジ形式のラベル（複数ラベルは横にずらして表示） #}
             {% if node.labels %}
-              <text
-                x="{{ node.cx + 14 }}"
-                y="{{ node.cy + 4 }}"
-                font-size="10"
-                fill="{{ node.color }}"
-                font-weight="bold"
-                pointer-events="none"
-              >{{ node.labels | join(", ") }}</text>
+              {% set ns = namespace(x_offset=0) %}
+              {% for label in node.labels %}
+                {% set badge_width = label.text | length * 7 + 8 %}
+                {% if label.kind == "head" %}
+                  <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
+                        width="{{ badge_width }}" height="16"
+                        rx="4" fill="{{ node.color }}" pointer-events="none"/>
+                  <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
+                        font-size="11" fill="white" font-weight="bold"
+                        pointer-events="none">{{ label.text }}</text>
+                {% elif label.kind == "branch" %}
+                  <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
+                        width="{{ badge_width }}" height="16"
+                        rx="4" fill="{{ node.color }}" opacity="0.65" pointer-events="none"/>
+                  <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
+                        font-size="11" fill="white" pointer-events="none">{{ label.text }}</text>
+                {% elif label.kind == "tag" %}
+                  <rect x="{{ node.cx + 12 + ns.x_offset }}" y="{{ node.cy - 8 }}"
+                        width="{{ badge_width }}" height="16"
+                        rx="7" fill="none" stroke="#888" stroke-width="1" pointer-events="none"/>
+                  <text x="{{ node.cx + 16 + ns.x_offset }}" y="{{ node.cy + 4 }}"
+                        font-size="11" fill="#888" pointer-events="none">{{ label.text }}</text>
+                {% endif %}
+                {% set ns.x_offset = ns.x_offset + badge_width + 4 %}
+              {% endfor %}
             {% endif %}
           </g>
         {% endfor %}
