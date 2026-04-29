@@ -19,9 +19,9 @@ def test_check_update_新バージョンあり():
     # --- Arrange ---
     svc._cache["checked_at"] = None
     assets = [
-        {"name": "GitLanes-0.4.0.dmg", "browser_download_url": "https://example.com/test.dmg"}
+        {"name": "GitLanes-999.9.9.dmg", "browser_download_url": "https://example.com/test.dmg"}
     ]
-    mock_resp = _make_github_response("v0.4.0", assets)
+    mock_resp = _make_github_response("v999.9.9", assets)
 
     # --- Act ---
     with patch("backend.services.update_service.httpx.get", return_value=mock_resp):
@@ -29,7 +29,7 @@ def test_check_update_新バージョンあり():
 
     # --- Assert ---
     assert result["available"] is True
-    assert result["version"] == "0.4.0"
+    assert result["version"] == "999.9.9"
     assert result["download_url"] == "https://example.com/test.dmg"
 
 
