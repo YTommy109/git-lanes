@@ -8,6 +8,7 @@ from sqlmodel import Session
 from backend.repositories import cache_repo
 from backend.repositories.git_repo import (
     iter_local_branches,
+    iter_remote_branches,
     iter_tags,
     open_repository,
     walk_commits_from_branches,
@@ -34,13 +35,9 @@ def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool
 
 
 def _has_missing_tips(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
-    """ブランチ先端コミットが DB に未収録なら True を返す。"""
-    for name in repo.branches.local:
-        branch = repo.branches.local.get(name)
-        if branch is None:
-            continue
-        tip = branch.peel(pygit2.Commit)
-        if cache_repo.get_commit(session, repo_id, str(tip.id)) is None:
+    """ローカル・リモートのブランチ先端コミットが DB に未収録なら True を返す。"""
+    for _, tip in (*iter_local_branches(repo), *iter_remote_branches(repo)):
+        if cache_repo.get_commit(session, repo_id, tip) is None:
             return True
     return False
 
@@ -51,7 +48,8 @@ def _has_missing_branches(session: Session, repo_id: str, repo: pygit2.Repositor
     既存コミットを先端に持つ新ブランチ（git switch -c など）を検知する。
     """
     cached_names = {b.name for b in cache_repo.list_branches(session, repo_id)}
-    return any(name not in cached_names for name in repo.branches.local)
+    all_names = [*repo.branches.local, *repo.branches.remote]
+    return any(name not in cached_names for name in all_names)
 
 
 def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
@@ -138,6 +136,8 @@ def _sync_commits_and_branches(
     try:
         for branch_name, tip in iter_local_branches(repo):
             cache_repo.insert_branch_row(session, repo_id, branch_name, tip, 0)
+        for branch_name, tip in iter_remote_branches(repo):
+            cache_repo.insert_branch_row(session, repo_id, branch_name, tip, 1)
     except pygit2.GitError:
         pass
     _sync_tags(session, repo_id, repo)
