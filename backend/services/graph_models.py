@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from backend.models import Commit
 
@@ -20,6 +21,17 @@ LANE_COLORS: list[str] = [
 SPACING_X: float = 30.0
 SPACING_Y: float = 60.0
 MARGIN_TOP: float = 30.0
+
+NodeType = Literal["tip", "root", "merge", "regular"]
+LabelKind = Literal["head", "branch", "tag"]
+
+
+@dataclass
+class SvgLabel:
+    """ブランチ名・タグ・HEAD ラベルの種別付きデータ。"""
+
+    text: str
+    kind: LabelKind
 
 
 @dataclass
@@ -39,6 +51,7 @@ class GraphLine:
     branch: GraphBranch
     color: str
     is_main: bool = False
+    is_head_branch: bool = False
     nodes: list[GraphNode] = field(default_factory=list)
     x: float = 0.0
     positioned: bool = False
@@ -73,7 +86,8 @@ class SvgNode:
     cy: float
     color: str
     commit: Commit
-    labels: list[str]
+    labels: list[SvgLabel]
+    node_type: NodeType = "regular"
 
 
 @dataclass
@@ -82,6 +96,7 @@ class SvgEdge:
 
     d: str
     color: str
+    is_main: bool = False
 
 
 @dataclass
