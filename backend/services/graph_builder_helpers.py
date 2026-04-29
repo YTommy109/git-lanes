@@ -42,8 +42,10 @@ def _place_parent(
     """親コミットをカレントレイヤーに配置し edge_colors と edge_is_main を更新する。"""
     edge_colors[(node.commit.hash, ph)] = line.color
     edge_is_main[(node.commit.hash, ph)] = line.is_head_branch
-    if ph in commit_to_node:
-        line.nodes.append(commit_to_node[ph])
+    existing = commit_to_node.get(ph)
+    if existing and not existing.dummy and existing.layer is curr:
+        # 同一レイヤーに非ダミーノードが既存 → 別パスが先に確定済み（GitUp と同等）
+        line.nodes.append(existing)
     elif ph in commit_map:
         ready = _is_ready(ph, curr, commit_to_node, children_map)
         pnode = GraphNode(commit=commit_map[ph], layer=curr, primary_line=line, dummy=not ready)
@@ -59,6 +61,11 @@ def _realize_dummy(
     children_map: dict[str, list[str]],
 ) -> None:
     """ダミーノードを次レイヤーに持ち越す（準備完了なら実ノードに昇格）。"""
+    existing = commit_to_node.get(node.commit.hash)
+    if existing and not existing.dummy and existing.layer is curr:
+        # _place_parent が先に同一レイヤーへ実ノードを配置済み → 再利用（GitUp と同等）
+        node.primary_line.nodes.append(existing)
+        return
     ready = _is_ready(node.commit.hash, curr, commit_to_node, children_map)
     new = GraphNode(
         commit=node.commit,

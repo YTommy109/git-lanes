@@ -213,3 +213,60 @@ def test_build_graph_非HEADブランチエッジのis_mainはFalse():
 
     # --- Assert ---
     assert all(not e.is_main for e in result.edges)
+
+
+def test_build_graph_共通祖先コミットの重複がない():
+    """
+    A → D → X
+    B → X
+    というグラフで X が重複ノードを持たないことを検証する。
+    （旧実装では dummy_X と _place_parent の衝突で X が 2 つ生成された）
+    """
+    # --- Arrange ---
+    a, b, d, x = _c("a", 4), _c("b", 3), _c("d", 2), _c("x", 1)
+    commits = [a, b, d, x]
+    # A → D → X、B → X
+    parents = {
+        "a" * 40: ["d" * 40],
+        "b" * 40: ["x" * 40],
+        "d" * 40: ["x" * 40],
+    }
+    branches = [_b("main", "a"), _b("feat", "b")]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [])
+
+    # --- Assert ---
+    hashes = [n.commit.hash for n in result.nodes]
+    assert hashes.count("x" * 40) == 1, "コミット X が重複している"
+    assert len({n.commit.hash for n in result.nodes}) == len(result.nodes), "重複ノードが存在する"
+
+
+def test_build_graph_ダイアモンドマージでエッジ数が正しい():
+    """
+    M → [B, F]
+    B → A
+    F → A
+    という構造でエッジが M→B, M→F, B→A, F→A の 4 本だけであることを検証する。
+    重複ノードがあると A へのエッジが余分に生成される。
+    """
+    # --- Arrange ---
+    m, b, f, a = _c("m", 4), _c("b", 3), _c("f", 2), _c("a", 1)
+    commits = [m, b, f, a]
+    parents = {
+        "m" * 40: ["b" * 40, "f" * 40],
+        "b" * 40: ["a" * 40],
+        "f" * 40: ["a" * 40],
+    }
+    branches = [_b("main", "m")]
+
+    # --- Act ---
+    result = build_graph(commits, parents, branches, [])
+
+    # --- Assert ---
+    assert len(result.nodes) == 4, f"ノード数が異常: {len(result.nodes)}"
+    hashes = {n.commit.hash for n in result.nodes}
+    assert "a" * 40 in hashes, "共通祖先 A が欠落している"
+    a_node = next(n for n in result.nodes if n.commit.hash == "a" * 40)
+    edges_to_a = [e for e in result.edges if f"{a_node.cx:.1f} {a_node.cy:.1f}" in e.d]
+    assert len(edges_to_a) == 2, f"A へのエッジ数が異常: {len(edges_to_a)}"
