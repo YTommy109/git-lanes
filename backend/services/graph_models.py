@@ -111,6 +111,7 @@ class SvgEdge:
     d: str
     color: str
     is_main: bool = False
+    dashed: bool = False
 
 
 @dataclass

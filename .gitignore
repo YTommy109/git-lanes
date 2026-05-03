@@ -6,6 +6,7 @@ __pycache__/
 .venv/
 dist/
 .superpowers/
+research
 research/
 .claude
 # Added by dagayn

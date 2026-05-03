@@ -13,7 +13,7 @@ from sqlmodel import Session
 
 from backend.db import get_session
 from backend.repositories import cache_repo
-from backend.services import graph_builder, sync_service
+from backend.services import grid_builder, sync_service
 from backend.validation import parse_commit_hash, parse_repo_id
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -52,7 +52,7 @@ async def graph_page(
     parents = cache_repo.parents_by_child(session, [r.hash for r in rows])
     branches = cache_repo.list_branches(session, rid)
     tags = cache_repo.list_tags(session, rid)
-    result = graph_builder.build_graph(rows, parents, branches, tags, rec.cached_head)
+    result = grid_builder.build_grid(rows, parents, branches, tags, rec.cached_head)
     context: dict = {
         "repo_id": rid,
         "repo_name": rec.name,

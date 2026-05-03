@@ -52,6 +52,7 @@
             d="{{ edge.d }}"
             stroke="{{ edge.color }}"
             stroke-width="{% if edge.is_main %}4{% else %}2{% endif %}"
+            {% if edge.dashed %}stroke-dasharray="4,3"{% endif %}
             fill="none"
           />
         {% endfor %}
