@@ -9,7 +9,11 @@ from backend.models import Branch, Commit, Tag
 from backend.services.graph_models import GraphResult
 from backend.services.grid_builder_helpers import init_branch_maps
 from backend.services.grid_builder_layout import build_dummy_nodes, build_edge_graph
-from backend.services.grid_builder_utils import _build_branch_labels, _process_one_commit
+from backend.services.grid_builder_utils import (
+    CommitState,
+    _build_branch_labels,
+    _process_one_commit,
+)
 from backend.services.grid_models import GridLayout, GridNode
 
 
@@ -22,29 +26,23 @@ def _place_commits(
     layout: GridLayout,
 ) -> dict[str, GridNode]:
     """コミットをグリッドに配置し placed マップを返す。"""
-    placed: dict[str, GridNode] = {}
+    state = CommitState(used_lane_nums=used_lane_nums, color_idx=len(used_lane_nums))
     row = 0
-    active_lanes: list[tuple[int, str, str, str]] = []
-    color_idx = len(used_lane_nums)
 
     for _, group in groupby(sorted_commits, key=lambda c: c.committed_at):
         for commit in list(group):
-            args = (
+            _process_one_commit(
                 commit.hash,
                 row,
-                placed,
-                active_lanes,
-                used_lane_nums,
+                state,
                 tip_lane,
                 tip_color,
-                color_idx,
                 parents.get(commit.hash, []),
                 layout,
             )
-            placed, active_lanes, used_lane_nums, color_idx = _process_one_commit(*args)
         row += 1
 
-    return placed
+    return state.placed
 
 
 def build_layout(

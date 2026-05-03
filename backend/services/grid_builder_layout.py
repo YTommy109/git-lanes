@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from backend.models import Branch
-from backend.services.grid_models import GRID_COLORS, GridEdge, GridLayout, GridNode
+from backend.services.grid_models import GRID_COLORS, GridLayout, GridNode
 
 
 def _add_dummy_edges_for_branch(
@@ -67,7 +67,7 @@ def build_edge_graph(
         parents: コミットハッシュから親ハッシュリストへのマップ。
         placed: 配置済みコミットのマップ。
     """
-    from backend.services.grid_builder_helpers import add_joint_edges
+    from backend.services.grid_builder_helpers import _e, add_joint_edges
 
     for node in layout.nodes:
         if node.kind != "commit":
@@ -78,14 +78,7 @@ def build_edge_graph(
             p_node = placed[p_hash]
             if node.lane == p_node.lane or abs(p_node.row - node.row) == 1:
                 layout.edges.append(
-                    GridEdge(
-                        from_lane=node.lane,
-                        from_row=node.row,
-                        to_lane=p_node.lane,
-                        to_row=p_node.row,
-                        color=node.color,
-                        dashed=False,
-                    )
+                    _e(node.lane, node.row, p_node.lane, p_node.row, node.color, False)
                 )
             else:
                 add_joint_edges(layout, node, p_node)
