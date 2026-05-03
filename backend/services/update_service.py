@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from pathlib import Path
@@ -37,10 +38,14 @@ def _find_dmg_url(assets: list[dict]) -> str | None:
 def check_update() -> dict:
     """GitHub Releases API で最新バージョンを確認する（1時間TTLキャッシュ）。
 
+    GL_MOCK_DMG が設定されている場合は GitHub を呼ばずモック結果を返す。
+
     Returns:
         available: 更新があれば True。version: 最新バージョン文字列。
         download_url: DMG のダウンロード URL（なければ None）。
     """
+    if os.environ.get("GL_MOCK_DMG"):
+        return {"available": True, "version": "999.0.0", "download_url": None}
     now = time.monotonic()
     if _cache["checked_at"] and now - _cache["checked_at"] < _CACHE_TTL:
         return _cache["result"]
@@ -62,7 +67,12 @@ def check_update() -> dict:
 
 
 def get_download_state() -> dict:
-    """ダウンロード状態のコピーを返す。"""
+    """ダウンロード状態のコピーを返す。
+
+    GL_MOCK_DMG が設定されている場合はそのパスで完了状態を返す。
+    """
+    if mock_dmg := os.environ.get("GL_MOCK_DMG"):
+        return {"percent": 100, "status": "done", "dmg_path": mock_dmg}
     return dict(_download_state)
 
 
