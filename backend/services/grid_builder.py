@@ -79,8 +79,19 @@ def build_grid(
     tags: list[Tag],
     head_hash: str | None = None,
 ) -> GraphResult:
-    """グリッドエンジンでグラフを構築して GraphResult を返す。"""
+    """グリッドエンジンでグラフを構築して GraphResult を返す。
+
+    Args:
+        commits: コミットのリスト（新しい順）。
+        parents: コミットハッシュ → 親ハッシュリスト のマップ。
+        branches: ブランチのリスト。
+        tags: タグのリスト（今後使用予定）。
+        head_hash: HEAD コミットのハッシュ（今後使用予定）。
+
+    Returns:
+        SVG テンプレートへ渡す GraphResult。
+    """
     from backend.services.grid_coords import to_svg
 
     layout = build_layout(commits, parents, branches, tags, head_hash)
-    return to_svg(layout)
+    return to_svg(layout, commits)
