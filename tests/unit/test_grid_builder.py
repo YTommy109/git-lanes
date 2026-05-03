@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from backend.models import Branch, Commit
+from backend.services.grid_builder import build_layout
 from backend.services.grid_models import GridLayout, NodeKind
 
 _REPO = "test-repo"
@@ -78,9 +79,9 @@ def assert_edge(
         f"→'{to_h}'({to_node.lane},{to_node.row}) が見つからない。"
         f"edges={edge_list}"
     )
-    assert edge.dashed == dashed, (
-        f"エッジ '{from_h}'→'{to_h}' dashed: 実際={edge.dashed} 期待={dashed}"
-    )
+    assert (
+        edge.dashed == dashed
+    ), f"エッジ '{from_h}'→'{to_h}' dashed: 実際={edge.dashed} 期待={dashed}"
 
 
 def assert_edge_coords(
@@ -106,10 +107,313 @@ def assert_edge_coords(
         None,
     )
     edge_list = [(e.from_lane, e.from_row, e.to_lane, e.to_row) for e in layout.edges]
-    assert edge is not None, (
-        f"エッジ ({from_lane},{from_row})→({to_lane},{to_row}) が見つからない。edges={edge_list}"
-    )
+    assert (
+        edge is not None
+    ), f"エッジ ({from_lane},{from_row})→({to_lane},{to_row}) が見つからない。edges={edge_list}"
     assert edge.dashed == dashed, (
         f"エッジ ({from_lane},{from_row})→({to_lane},{to_row}) "
         f"dashed: 実際={edge.dashed} 期待={dashed}"
     )
+
+
+def test_ケース1_コミット1つ():
+    # --- Arrange ---
+    commits = [_c("a", parents=[], at=1)]
+    branches = [_b("main", "a")]
+    parents = _p(commits, {})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a", lane=1, row=0, kind="commit")
+    assert len([n for n in layout.nodes if n.kind == "dummy"]) == 0
+    assert len(layout.edges) == 0
+
+
+def test_ケース2_直線接続():
+    # --- Arrange ---
+    commits = [_c("b", parents=["a"], at=2), _c("a", parents=[], at=1)]
+    branches = [_b("main", "b")]
+    parents = _p(commits, {"b": ["a"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "b", lane=1, row=0, kind="commit")
+    assert_node(layout, "a", lane=1, row=1, kind="commit")
+    assert_edge(layout, "b", "a", dashed=False)
+
+
+def test_ケース3_同じコミットを指す2ブランチ():
+    # --- Arrange ---
+    commits = [_c("a", parents=[], at=1)]
+    branches = [_b("main", "a"), _b("develop", "a")]
+    parents = _p(commits, {})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    # 同じコミットを指す 2 ブランチ → コミットはレーン 1 に 1 つだけ
+    assert_node(layout, "a", lane=1, row=0, kind="commit")
+    commit_nodes = [n for n in layout.nodes if n.kind == "commit"]
+    assert len(commit_nodes) == 1
+    # develop ラベルも lane 1 に存在する
+    lane1_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
+    assert lane1_labels is not None
+    assert "develop" in lane1_labels.names
+
+
+def test_ケース4_2ブランチが同じ親を持つ():
+    # --- Arrange ---
+    # a と b は同じ committed_at → row 0 を共有
+    commits = [
+        _c("a", parents=["c"], at=2),
+        _c("b", parents=["c"], at=2),
+        _c("c", parents=[], at=1),
+    ]
+    branches = [_b("main", "a"), _b("develop", "b")]
+    parents = _p(commits, {"a": ["c"], "b": ["c"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a", lane=1, row=0, kind="commit")
+    assert_node(layout, "b", lane=4, row=0, kind="commit")
+    assert_node(layout, "c", lane=1, row=1, kind="commit")
+    assert_edge(layout, "a", "c", dashed=False)
+    assert_edge(layout, "b", "c", dashed=False)
+
+
+def test_ケース5_developがmainの途中から分岐():
+    # --- Arrange ---
+    # a1 と b1 を同じ at=2 → row 1 を共有
+    commits = [
+        _c("a2", parents=["a1"], at=3),
+        _c("a1", parents=["a0"], at=2),
+        _c("b1", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a2"), _b("develop", "b1")]
+    parents = _p(commits, {"a2": ["a1"], "a1": ["a0"], "b1": ["a0"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a2", lane=1, row=0, kind="commit")
+    assert_node(layout, "a1", lane=1, row=1, kind="commit")
+    assert_node(layout, "b1", lane=4, row=1, kind="commit")
+    assert_node(layout, "a0", lane=1, row=2, kind="commit")
+    # develop のダミーノードが row=0 lane=4 にある
+    dummy_nodes = [n for n in layout.nodes if n.kind == "dummy" and n.lane == 4 and n.row == 0]
+    assert len(dummy_nodes) == 1
+    # ダミー→b1 エッジ（同一レーン縦、破線）
+    assert_edge_coords(layout, 4, 0, 4, 1, dashed=True)
+    # b1→a0 エッジ（斜め、実線）
+    assert_edge(layout, "b1", "a0", dashed=False)
+
+
+def test_ケース6_developが古いコミットを指す():
+    # --- Arrange ---
+    # develop は a0 を直接指している
+    commits = [
+        _c("a2", parents=["a1"], at=3),
+        _c("a1", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a2"), _b("develop", "a0")]
+    parents = _p(commits, {"a2": ["a1"], "a1": ["a0"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a2", lane=1, row=0, kind="commit")
+    assert_node(layout, "a1", lane=1, row=1, kind="commit")
+    assert_node(layout, "a0", lane=1, row=2, kind="commit")
+    # develop のダミーが row=0, lane=4
+    dummy_nodes = [n for n in layout.nodes if n.kind == "dummy" and n.lane == 4]
+    assert len(dummy_nodes) == 1
+    assert dummy_nodes[0].row == 0
+    # ジョイントノードが row=1, lane=4 にある
+    joint_nodes = [n for n in layout.nodes if n.kind == "joint" and n.lane == 4]
+    assert len(joint_nodes) == 1
+    assert joint_nodes[0].row == 1
+    # エッジ: ダミー(4,0)→ジョイント(4,1) 縦破線
+    assert_edge_coords(layout, 4, 0, 4, 1, dashed=True)
+    # エッジ: ジョイント(4,1)→a0(1,2) 斜め破線
+    assert_edge_coords(layout, 4, 1, 1, 2, dashed=True)
+
+
+def test_ケース7_developがmainより新しい():
+    # --- Arrange ---
+    commits = [
+        _c("b1", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a0"), _b("develop", "b1")]
+    parents = _p(commits, {"b1": ["a0"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    # main のダミーが row=0, lane=1 にある（main tip=a0 は row=1）
+    main_dummies = [n for n in layout.nodes if n.kind == "dummy" and n.lane == 1]
+    assert len(main_dummies) == 1
+    assert main_dummies[0].row == 0
+    assert_node(layout, "b1", lane=4, row=0, kind="commit")
+    assert_node(layout, "a0", lane=1, row=1, kind="commit")
+    # ダミー(1,0)→a0(1,1) 縦破線
+    assert_edge_coords(layout, 1, 0, 1, 1, dashed=True)
+    # b1→a0 斜め実線
+    assert_edge(layout, "b1", "a0", dashed=False)
+
+
+def test_ケース8_マージ済みブランチ名削除済み():
+    # --- Arrange ---
+    # a1 はマージコミット。第1親=a0（main継続）、第2親=b1（削除済み develop）
+    commits = [
+        _c("a1", parents=["a0", "b1"], at=3),
+        _c("b1", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a1")]  # develop は削除済み → branches に含まれない
+    parents = _p(commits, {"a1": ["a0", "b1"], "b1": ["a0"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a1", lane=1, row=0, kind="commit")
+    assert_node(layout, "b1", lane=2, row=1, kind="commit")
+    assert_node(layout, "a0", lane=1, row=2, kind="commit")
+    # a1→a0 縦エッジ（main色）
+    assert_edge(layout, "a1", "a0", dashed=False)
+    # a1→b1 斜めエッジ
+    assert_edge(layout, "a1", "b1", dashed=False)
+    # b1→a0 斜めエッジ
+    assert_edge(layout, "b1", "a0", dashed=False)
+    # ダミーなし
+    assert len([n for n in layout.nodes if n.kind == "dummy"]) == 0
+
+
+def test_ケース9_マージ済み削除ブランチ複数コミット():
+    # --- Arrange ---
+    commits = [
+        _c("a1", parents=["a0", "b3"], at=5),
+        _c("b3", parents=["b2"], at=4),
+        _c("b2", parents=["b1"], at=3),
+        _c("b1", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a1")]
+    parents = _p(
+        commits,
+        {
+            "a1": ["a0", "b3"],
+            "b3": ["b2"],
+            "b2": ["b1"],
+            "b1": ["a0"],
+        },
+    )
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a1", lane=1, row=0, kind="commit")
+    assert_node(layout, "b3", lane=2, row=1, kind="commit")
+    assert_node(layout, "b2", lane=2, row=2, kind="commit")
+    assert_node(layout, "b1", lane=2, row=3, kind="commit")
+    assert_node(layout, "a0", lane=1, row=4, kind="commit")
+    assert_edge(layout, "a1", "b3", dashed=False)
+    assert_edge(layout, "b3", "b2", dashed=False)
+    assert_edge(layout, "b2", "b1", dashed=False)
+    assert_edge(layout, "b1", "a0", dashed=False)
+    # a1→a0 縦エッジ（main 色）
+    assert_edge(layout, "a1", "a0", dashed=False)
+
+
+def test_ケース10_削除ブランチとアクティブブランチ混在():
+    # --- Arrange ---
+    # b1 と c1 は同じ at=2 → row 1 を共有
+    commits = [
+        _c("a1", parents=["a0", "b1"], at=3),
+        _c("b1", parents=["a0"], at=2),
+        _c("c1", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a1"), _b("feat/something01", "c1")]
+    parents = _p(commits, {"a1": ["a0", "b1"], "b1": ["a0"], "c1": ["a0"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a1", lane=1, row=0, kind="commit")
+    assert_node(layout, "b1", lane=2, row=1, kind="commit")
+    assert_node(layout, "c1", lane=4, row=1, kind="commit")
+    assert_node(layout, "a0", lane=1, row=2, kind="commit")
+    # feat のダミーが row=0, lane=4
+    feat_dummies = [n for n in layout.nodes if n.kind == "dummy" and n.lane == 4]
+    assert len(feat_dummies) == 1
+    # ダミー(4,0)→c1(4,1) 縦破線
+    assert_edge_coords(layout, 4, 0, 4, 1, dashed=True)
+    # 各エッジ
+    assert_edge(layout, "a1", "b1", dashed=False)
+    assert_edge(layout, "a1", "a0", dashed=False)
+    assert_edge(layout, "b1", "a0", dashed=False)
+    assert_edge(layout, "c1", "a0", dashed=False)
+
+
+def test_ケース11_2ブランチをマージ後にどちらも削除():
+    # --- Arrange ---
+    # a1 と c1 は同じ at=3 → row 1 を共有
+    commits = [
+        _c("a2", parents=["a1", "c1"], at=4),
+        _c("a1", parents=["a0", "b1"], at=3),
+        _c("c1", parents=["a0"], at=3),
+        _c("b1", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a2")]  # develop, feat はどちらも削除済み
+    parents = _p(
+        commits,
+        {
+            "a2": ["a1", "c1"],
+            "a1": ["a0", "b1"],
+            "c1": ["a0"],
+            "b1": ["a0"],
+        },
+    )
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a2", lane=1, row=0, kind="commit")
+    assert_node(layout, "a1", lane=1, row=1, kind="commit")
+    # c1 と b1 のレーン: アルゴリズムの予約順に依存する
+    # a2 が c1 を lane=2 に予約 → c1=2, a1 が b1 を lane=3 に予約 → b1=3
+    assert_node(layout, "c1", lane=2, row=1, kind="commit")
+    assert_node(layout, "b1", lane=3, row=2, kind="commit")
+    assert_node(layout, "a0", lane=1, row=3, kind="commit")
+    # c1→a0 のジョイントノードが lane=2, row=2
+    c1_joints = [n for n in layout.nodes if n.kind == "joint" and n.lane == 2]
+    assert len(c1_joints) == 1
+    assert c1_joints[0].row == 2
+    # エッジ
+    assert_edge(layout, "a2", "a1", dashed=False)
+    assert_edge(layout, "a2", "c1", dashed=False)
+    assert_edge(layout, "a1", "b1", dashed=False)
+    assert_edge(layout, "a1", "a0", dashed=False)
+    assert_edge(layout, "b1", "a0", dashed=False)
+    # c1(2,1)→joint(2,2) 縦
+    assert_edge_coords(layout, 2, 1, 2, 2, dashed=False)
+    # joint(2,2)→a0(1,3) 斜め
+    assert_edge_coords(layout, 2, 2, 1, 3, dashed=False)
