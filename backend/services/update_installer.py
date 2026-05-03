@@ -90,12 +90,15 @@ def _mount_dmg(dmg_path: str) -> Path | None:
     subprocess.run(["xattr", "-d", "com.apple.quarantine", dmg_path], capture_output=True)
     try:
         result = subprocess.run(
-            ["hdiutil", "attach", dmg_path, "-nobrowse", "-agree", "-plist"],
+            ["hdiutil", "attach", dmg_path, "-nobrowse", "-plist"],
             capture_output=True,
             check=True,
             timeout=60,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        _logger.warning("hdiutil attach 失敗: %s", e)
+        if hasattr(e, "stderr") and e.stderr:
+            _logger.warning("stderr: %s", e.stderr.decode(errors="replace"))
         return None
     return _parse_mount_point(result.stdout)
 
