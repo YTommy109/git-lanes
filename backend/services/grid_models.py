@@ -21,7 +21,7 @@ GRID_COLORS: list[str] = [
 
 GRID_SPACING: int = 30
 GRID_ORIGIN_X: int = 20  # レーン N の cx = GRID_ORIGIN_X + N * GRID_SPACING
-GRID_ORIGIN_Y: int = 72  # 行 M の cy = GRID_ORIGIN_Y + M * GRID_SPACING
+GRID_ORIGIN_Y: int = 102  # 行 M の cy = GRID_ORIGIN_Y + M * GRID_SPACING
 
 
 @dataclass

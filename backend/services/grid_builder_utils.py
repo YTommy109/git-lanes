@@ -118,7 +118,12 @@ def _build_branch_labels(
     lane_to_color: dict[int, str] = {}
     for b in branches:
         tip_h = b.tip_hash
-        target_lane = placed[tip_h].lane if tip_h in placed else tip_lane.get(tip_h)
+        # tip が row=0 にある（ヘッダー行に直接表示）→ 配置済みレーンを使用。
+        # tip が row>0 にある（ダミーノードで代替）→ ダミーの位置である指定レーンを使用。
+        if tip_h in placed and placed[tip_h].row == 0:
+            target_lane = placed[tip_h].lane
+        else:
+            target_lane = tip_lane.get(tip_h)
         if target_lane is None:
             continue
         lane_to_names.setdefault(target_lane, []).append(b.name)

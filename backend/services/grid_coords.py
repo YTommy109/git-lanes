@@ -116,15 +116,20 @@ def _build_svg_edges(layout: GridLayout) -> list[SvgEdge]:
 def _build_svg_headers(layout: GridLayout) -> list[SvgBranchHeader]:
     """GridBranchLabel リストを SvgBranchHeader リストに変換する。"""
     label_y = float(GRID_ORIGIN_Y - GRID_SPACING)
+    dummy_lanes = {n.lane for n in layout.nodes if n.kind == "dummy" and n.row == 0}
     result: list[SvgBranchHeader] = []
     for label in layout.branch_labels:
+        has_dummy = label.lane in dummy_lanes
+        cx = _cx(label.lane)
         result.append(
             SvgBranchHeader(
-                cx=_cx(label.lane),
+                cx=cx,
                 cy=label_y,
                 labels=[SvgLabel(text=n, kind="branch") for n in label.names],
                 color=label.color,
                 display_text=", ".join(label.names),
+                connector_to_x=cx if has_dummy else None,
+                connector_to_y=float(_cy(0)) if has_dummy else None,
             )
         )
     return result
