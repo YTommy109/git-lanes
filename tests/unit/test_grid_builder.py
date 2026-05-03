@@ -420,3 +420,42 @@ def test_ケース11_2ブランチをマージ後にどちらも削除():
     assert_edge_coords(layout, 2, 1, 2, 2, dashed=False)
     # joint(2,2)→a0(1,3) 斜め
     assert_edge_coords(layout, 2, 2, 1, 3, dashed=False)
+
+
+def test_ケース12_削除済みブランチを2段階でマージ():
+    # --- Arrange ---
+    # a1 が配置されるとき b1 の lane=2 が合流して解放され、b0 が lane=2 を再利用する
+    commits = [
+        _c("a2", parents=["a1", "b1"], at=5),
+        _c("b1", parents=["a1"], at=4),
+        _c("a1", parents=["a0", "b0"], at=3),
+        _c("b0", parents=["a0"], at=2),
+        _c("a0", parents=[], at=1),
+    ]
+    branches = [_b("main", "a2")]
+    parents = _p(
+        commits,
+        {
+            "a2": ["a1", "b1"],
+            "b1": ["a1"],
+            "a1": ["a0", "b0"],
+            "b0": ["a0"],
+        },
+    )
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "a2", lane=1, row=0, kind="commit")
+    assert_node(layout, "b1", lane=2, row=1, kind="commit")
+    assert_node(layout, "a1", lane=1, row=2, kind="commit")
+    # b1 が a1 に収束してレーン 2 を解放 → b0 がレーン 2 を再利用
+    assert_node(layout, "b0", lane=2, row=3, kind="commit")
+    assert_node(layout, "a0", lane=1, row=4, kind="commit")
+    assert_edge(layout, "a2", "a1", dashed=False)
+    assert_edge(layout, "a2", "b1", dashed=False)
+    assert_edge(layout, "b1", "a1", dashed=False)
+    assert_edge(layout, "a1", "a0", dashed=False)
+    assert_edge(layout, "a1", "b0", dashed=False)
+    assert_edge(layout, "b0", "a0", dashed=False)

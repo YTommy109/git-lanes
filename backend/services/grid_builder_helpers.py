@@ -123,18 +123,22 @@ def update_active_lanes(
 
     p1 = commit_parents[0] if commit_parents else None
     new_active: list[tuple[int, str, str, str]] = []
+    freed: set[int] = set()
     matched_consumed = False
     for i, (ln, bh, eh, color) in enumerate(active_lanes):
         if i == matched_idx:
             matched_consumed = True
             if p1:
                 new_active.append((matched_lane, commit_hash, p1, matched_color))
+        elif eh == commit_hash:
+            # 同コミットを期待していた合流レーンを解放して再利用可能にする
+            freed.add(ln)
         else:
             new_active.append((ln, bh, eh, color))
     if not matched_consumed and p1:
         new_active.append((matched_lane, commit_hash, p1, matched_color))
     return _reserve_secondary_parents(
-        commit_hash, commit_parents, placed, used_lane_nums, new_active, color_idx
+        commit_hash, commit_parents, placed, used_lane_nums - freed, new_active, color_idx
     )
 
 
