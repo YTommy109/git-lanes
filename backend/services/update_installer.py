@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import plistlib
 import subprocess
@@ -12,6 +13,7 @@ from typing import Literal
 from backend.services import update_service
 
 _SCRIPT_PATH = Path("/tmp/git-lanes-updater.sh")
+_logger = logging.getLogger(__name__)
 
 InstallResult = Literal["ok", "no_dmg", "mount_failed", "no_app", "not_frozen"]
 
@@ -19,9 +21,16 @@ InstallResult = Literal["ok", "no_dmg", "mount_failed", "no_app", "not_frozen"]
 def _get_app_path() -> Path | None:
     """PyInstaller 環境での .app バンドルパスを返す。
 
+    GL_MOCK_FROZEN 環境変数が設定されている場合はローカルテスト用パスを返す。
+
     Returns:
-        .app バンドルの Path。開発環境（sys.frozen が偽）なら None。
+        .app バンドルの Path。開発環境かつ GL_MOCK_FROZEN 未設定なら None。
     """
+    if os.environ.get("GL_MOCK_FROZEN"):
+        # ローカルテスト用: /tmp/git-lanes-mock.app を返す
+        mock_app = Path("/tmp/git-lanes-mock.app")
+        mock_app.mkdir(parents=True, exist_ok=True)
+        return mock_app
     if not getattr(sys, "frozen", False):
         return None
     # sys.executable = /Applications/Git Lanes.app/Contents/MacOS/Git Lanes
@@ -90,22 +99,29 @@ def install_update() -> InstallResult:
     """DMG をマウントして .app を差し替え、再起動スクリプトを実行する。
 
     Returns:
-        実行結果コード。成功時は "ok"（その後 sys.exit するため返らない）。
+        実行結果コード。成功時は os._exit(0) を呼ぶため返らない。
     """
     dmg_path = update_service.get_download_state().get("dmg_path")
+    _logger.debug("dmg_path=%s exists=%s", dmg_path, dmg_path and Path(dmg_path).exists())
     if not dmg_path or not Path(dmg_path).exists():
         return "no_dmg"
+    _logger.info("_mount_dmg 開始: %s", dmg_path)
     mount_point = _mount_dmg(dmg_path)
     if mount_point is None:
+        _logger.warning("_mount_dmg 失敗")
         return "mount_failed"
+    _logger.info("マウントポイント: %s", mount_point)
     apps = list(mount_point.glob("*.app"))
+    _logger.info("DMG 内 .app 一覧: %s", apps)
     if not apps:
         return "no_app"
     app_path = _get_app_path()
     if app_path is None:
         return "not_frozen"
-    _write_updater_script(app_path, mount_point, apps[0])
-    subprocess.Popen(["bash", str(_SCRIPT_PATH)])
+    script_path = _write_updater_script(app_path, mount_point, apps[0])
+    _logger.info("更新スクリプト: %s", script_path)
+    subprocess.Popen(["bash", str(script_path)])
     # sys.exit() は ThreadPoolExecutor ワーカースレッドしか終了しないため、
     # プロセス全体を即時終了する os._exit() を使う。
+    _logger.info("プロセスを終了してインストールスクリプトに引き渡す")
     os._exit(0)

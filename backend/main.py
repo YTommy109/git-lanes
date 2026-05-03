@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from backend.db import create_db_and_tables, engine
+from backend.logging_config import setup_logging
 from backend.repositories import cache_repo
 from backend.routers import api, html, update
 from backend.routers.graph_events import make_router
@@ -17,6 +18,7 @@ from backend.services.event_bus import event_bus
 from backend.services.watch_service import WatchService
 
 ROOT = Path(__file__).resolve().parent.parent
+setup_logging()
 
 
 def _start_watch_service(app: FastAPI) -> WatchService:
