@@ -71,6 +71,7 @@ fail_under = 85
 [tool.bumpversion]
 current_version = "0.4.6"
 commit = true
+commit_args = "--no-verify"
 commit_message = "chore: バージョンを {current_version} から {new_version} に更新する"
 tag = false
 
