@@ -1,6 +1,6 @@
 [project]
 name = "git-lanes"
-version = "0.4.5"
+version = "0.4.8"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.136",
@@ -41,9 +41,9 @@ migrate     = "atlas schema apply --url 'sqlite://${DB_PATH:-dev.db}' --to 'file
 app         = "python -m backend.app"
 build       = "pyinstaller -y git_lanes.spec"
 "test:install" = "touch /tmp/git-lanes-test.dmg && GL_MOCK_FROZEN=1 GL_MOCK_DMG=/tmp/git-lanes-test.dmg uv run python -c 'from backend.services.update_installer import install_update; print(install_update())'"
-"bump:patch" = "bump-my-version bump patch --no-commit --no-tag"
-"bump:minor" = "bump-my-version bump minor --no-commit --no-tag"
-"bump:major" = "bump-my-version bump major --no-commit --no-tag"
+"bump:patch" = "bump-my-version bump patch --no-tag"
+"bump:minor" = "bump-my-version bump minor --no-tag"
+"bump:major" = "bump-my-version bump major --no-tag"
 release      = "bash -c 'VERSION=$(bump-my-version show current_version) && git tag \"v$VERSION\" && echo \"Tagged: v$VERSION\"'"
 
 [tool.ruff]
@@ -69,8 +69,10 @@ omit = ["tests/*"]
 fail_under = 85
 
 [tool.bumpversion]
-current_version = "0.4.5"
-commit = false
+current_version = "0.4.8"
+commit = true
+commit_args = "--no-verify"
+message = "chore: バージョンを {current_version} から {new_version} に更新する"
 tag = false
 
 [[tool.bumpversion.files]]
@@ -87,3 +89,9 @@ replace = '"CFBundleShortVersionString": "{new_version}"'
 filename = "backend/version.py"
 search = '__version__ = "{current_version}"'
 replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "uv.lock"
+regex = true
+search = 'name = "git-lanes"\nversion = "{current_version}"'
+replace = 'name = "git-lanes"\nversion = "{new_version}"'

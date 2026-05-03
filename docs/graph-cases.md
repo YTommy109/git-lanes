@@ -342,3 +342,68 @@
   <line x1="80" y1="162" x2="50" y2="192" stroke="#3fb950" stroke-width="2"/>
   <circle cx="50" cy="192" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
 </svg>
+
+---
+
+## ケース 13: コミットにタグが付いている
+
+**条件**
+
+- main: a1 → a0（2 コミット）
+- a0 にタグ `v1.0` が付いている
+
+**期待する表示**
+
+- a0 のコミットノードの右側にタグラベル `v1.0` を表示する
+
+<svg width="200" height="130" xmlns="http://www.w3.org/2000/svg">
+  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+  <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
+  <circle cx="50" cy="102" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+  <rect x="63" y="94" width="38" height="16" rx="3" fill="none" stroke="#333333" stroke-width="1"/>
+  <text x="82" y="106" text-anchor="middle" font-size="10" font-family="monospace" fill="#333333">v1.0</text>
+</svg>
+
+---
+
+## ケース 14: コミットにタグが 2 つ付いている
+
+**条件**
+
+- main: a1 → a0（2 コミット）
+- a0 にタグ `v1.0` と `bugfix` が付いている
+
+**期待する表示**
+
+- a0 のコミットノードの右側に `v1.0, bugfix` とカンマ区切りで 1 つのバッジに表示する
+
+<svg width="230" height="130" xmlns="http://www.w3.org/2000/svg">
+  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+  <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
+  <circle cx="50" cy="102" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+  <rect x="63" y="94" width="80" height="16" rx="3" fill="none" stroke="#333333" stroke-width="1"/>
+  <text x="103" y="106" text-anchor="middle" font-size="10" font-family="monospace" fill="#333333">v1.0, bugfix</text>
+</svg>
+
+---
+
+## ケース 15: ブランチトップのコミットにタグが付いている
+
+**条件**
+
+- main: a1 → a0（2 コミット）
+- a1（ブランチの tip）にタグ `v1.0` が付いている
+
+**期待する表示**
+
+- ブランチ名ラベル `main` と並べて `[v1.0]` を −45° 回転して表示する
+
+<svg width="200" height="130" xmlns="http://www.w3.org/2000/svg">
+  <text x="35" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 35, 50)">main</text>
+  <text x="65" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 65, 50)">[v1.0]</text>
+  <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+  <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
+  <circle cx="50" cy="102" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+</svg>
