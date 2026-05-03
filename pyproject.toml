@@ -41,9 +41,10 @@ migrate     = "atlas schema apply --url 'sqlite://${DB_PATH:-dev.db}' --to 'file
 app         = "python -m backend.app"
 build       = "pyinstaller -y git_lanes.spec"
 "test:install" = "touch /tmp/git-lanes-test.dmg && GL_MOCK_FROZEN=1 GL_MOCK_DMG=/tmp/git-lanes-test.dmg uv run python -c 'from backend.services.update_installer import install_update; print(install_update())'"
-"bump:patch" = "bump-my-version bump patch"
-"bump:minor" = "bump-my-version bump minor"
-"bump:major" = "bump-my-version bump major"
+"bump:patch" = "bump-my-version bump patch --no-commit --no-tag"
+"bump:minor" = "bump-my-version bump minor --no-commit --no-tag"
+"bump:major" = "bump-my-version bump major --no-commit --no-tag"
+release      = "bash -c 'VERSION=$(bump-my-version show current_version) && git tag \"v$VERSION\" && echo \"Tagged: v$VERSION\"'"
 
 [tool.ruff]
 line-length = 100
@@ -69,10 +70,8 @@ fail_under = 85
 
 [tool.bumpversion]
 current_version = "0.4.5"
-commit = true
-tag = true
-tag_name = "v{new_version}"
-message = "chore: バージョンを {current_version} から {new_version} に更新する"
+commit = false
+tag = false
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
