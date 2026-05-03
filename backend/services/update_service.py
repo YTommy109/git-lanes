@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -16,6 +17,7 @@ _CACHE_TTL = 3600
 
 _cache: dict = {"checked_at": None, "result": None}
 _download_state: dict = {"percent": 0, "status": "idle", "dmg_path": None}
+_logger = logging.getLogger(__name__)
 
 
 def _is_newer(remote: str, current: str) -> bool:
@@ -63,6 +65,7 @@ def check_update() -> dict:
         result = {"available": False, "version": _CURRENT_VERSION, "download_url": None}
     _cache["checked_at"] = now
     _cache["result"] = result
+    _logger.info("更新確認: available=%s version=%s", result["available"], result["version"])
     return result
 
 
@@ -99,6 +102,7 @@ def _do_download(url: str, dest: Path | None = None) -> None:
         _download_state["status"] = "done"
         _download_state["dmg_path"] = str(dmg_path)
     except Exception:
+        _logger.error("ダウンロード失敗: url=%s", url, exc_info=True)
         _download_state["status"] = "error"
 
 

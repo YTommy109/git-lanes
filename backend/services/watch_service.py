@@ -89,6 +89,7 @@ class WatchService:
         git_dir = str(Path(repo_path) / ".git")
         if git_dir in self._watched_paths:
             return
+        _logger.info("監視追加: repo_id=%s", repo_id)
         handler = GitEventHandler(repo_id, repo_path, self._event_bus, self._engine)
         self._observer.schedule(handler, git_dir, recursive=True)
         self._watched_paths.add(git_dir)
@@ -96,8 +97,10 @@ class WatchService:
     def start(self) -> None:
         """Observer を起動する。lifespan startup で呼ぶ。"""
         self._observer.start()
+        _logger.info("WatchService 起動")
 
     def stop(self) -> None:
         """Observer を停止し、スレッド終了を待つ。lifespan shutdown で呼ぶ。"""
         self._observer.stop()
         self._observer.join()
+        _logger.info("WatchService 停止")

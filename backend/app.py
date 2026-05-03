@@ -1,11 +1,16 @@
 """pywebview アプリケーションのエントリポイント。"""
 
+import os
 import socket
 import threading
 import time
 
 import uvicorn
 import webview
+
+# アプリモードを宣言してからバックエンドをインポートさせる（ログレベルが INFO になる）
+# uvicorn.run は文字列で "backend.main:app" を受けるので実行時まで main はインポートされない
+os.environ.setdefault("GIT_LANES_MODE", "app")
 
 HOST = "127.0.0.1"
 

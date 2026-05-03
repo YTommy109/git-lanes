@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import pygit2
 from sqlmodel import Session
 
@@ -13,6 +15,8 @@ from backend.repositories.git_repo import (
     open_repository,
     walk_commits_from_branches,
 )
+
+_logger = logging.getLogger(__name__)
 
 
 def _head_hex_or_none(repo: pygit2.Repository) -> str | None:
@@ -118,6 +122,7 @@ def _sync_commits_and_branches(
         head_hex: 現在の HEAD ハッシュ。
     """
     commits = walk_commits_from_branches(repo)
+    _logger.info("同期実行: repo_id=%s commits=%d", repo_id, len(commits))
     # 親ハッシュへの外部キー制約を満たすため、コミットを先に全件挿入する。
     for c in commits:
         message_line = c.message.split("\n", 1)[0]
