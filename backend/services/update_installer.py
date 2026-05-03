@@ -13,6 +13,7 @@ from typing import Literal
 from backend.services import update_service
 
 _SCRIPT_PATH = Path("/tmp/git-lanes-updater.sh")
+_MOCK_VOLUME = Path("/tmp/git-lanes-mock-volume")
 _logger = logging.getLogger(__name__)
 
 InstallResult = Literal["ok", "no_dmg", "mount_failed", "no_app", "not_frozen"]
@@ -37,10 +38,40 @@ def _get_app_path() -> Path | None:
     return Path(sys.executable).parent.parent.parent
 
 
+def _mock_mount() -> Path:
+    """ローカルテスト用の仮マウントポイントを作成して返す。
+
+    Returns:
+        MockApp.app を含む仮マウントポイントの Path。
+    """
+    _MOCK_VOLUME.mkdir(parents=True, exist_ok=True)
+    (_MOCK_VOLUME / "MockApp.app").mkdir(exist_ok=True)
+    return _MOCK_VOLUME
+
+
+def _parse_mount_point(stdout: bytes) -> Path | None:
+    """hdiutil plist 出力からマウントポイントを取得する。
+
+    Args:
+        stdout: hdiutil attach の標準出力（plist 形式）。
+
+    Returns:
+        マウントポイントの Path。見つからない場合は None。
+    """
+    try:
+        plist = plistlib.loads(stdout)
+    except Exception:
+        return None
+    for entity in plist.get("system-entities", []):
+        if "mount-point" in entity:
+            return Path(entity["mount-point"])
+    return None
+
+
 def _mount_dmg(dmg_path: str) -> Path | None:
     """DMG をマウントしてマウントポイントを返す。
 
-    plist 出力で確実にパースする。quarantine 属性を事前に除去する。
+    GL_MOCK_DMG 設定時はモックを返す。quarantine 属性を事前に除去する。
 
     Args:
         dmg_path: DMG ファイルのパス。
@@ -48,10 +79,9 @@ def _mount_dmg(dmg_path: str) -> Path | None:
     Returns:
         マウントポイントの Path。失敗時は None。
     """
-    subprocess.run(
-        ["xattr", "-d", "com.apple.quarantine", dmg_path],
-        capture_output=True,
-    )
+    if os.environ.get("GL_MOCK_DMG"):
+        return _mock_mount()
+    subprocess.run(["xattr", "-d", "com.apple.quarantine", dmg_path], capture_output=True)
     try:
         result = subprocess.run(
             ["hdiutil", "attach", dmg_path, "-nobrowse", "-agree", "-plist"],
@@ -61,14 +91,7 @@ def _mount_dmg(dmg_path: str) -> Path | None:
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return None
-    try:
-        plist = plistlib.loads(result.stdout)
-    except Exception:
-        return None
-    for entity in plist.get("system-entities", []):
-        if "mount-point" in entity:
-            return Path(entity["mount-point"])
-    return None
+    return _parse_mount_point(result.stdout)
 
 
 def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) -> Path:

@@ -208,6 +208,16 @@ def test_install_update_appなしは_no_app_を返す(tmp_path):
     assert result == "no_app"
 
 
+def test_mount_dmg_GL_MOCK_DMG環境変数でモックマウントポイントを返す():
+    # --- Arrange / Act ---
+    with patch.dict(os.environ, {"GL_MOCK_DMG": "/tmp/git-lanes-test.dmg"}):
+        with patch.object(Path, "mkdir"):
+            result = installer._mount_dmg("/tmp/git-lanes-test.dmg")
+
+    # --- Assert ---
+    assert result == installer._MOCK_VOLUME
+
+
 def test_get_app_path_GL_MOCK_FROZEN環境変数が設定されている場合モックパスを返す():
     # --- Arrange / Act ---
     with patch.dict(os.environ, {"GL_MOCK_FROZEN": "1"}):
