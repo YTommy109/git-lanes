@@ -17,6 +17,14 @@ from backend.services.grid_builder_utils import (
 from backend.services.grid_models import GridLayout, GridNode
 
 
+def _build_tag_map(tags: list[Tag]) -> dict[str, list[str]]:
+    """タグリストをコミットハッシュ→タグ名リストの辞書に変換する。"""
+    result: dict[str, list[str]] = {}
+    for tag in tags:
+        result.setdefault(tag.commit_hash, []).append(tag.name)
+    return result
+
+
 def _place_commits(
     sorted_commits: list[Commit],
     parents: dict[str, list[str]],
@@ -53,7 +61,6 @@ def build_layout(
     head_hash: str | None = None,
 ) -> GridLayout:
     """グリッドレイアウトを計算する。"""
-    # tags は今後タグラベル表示に使用予定
     tip_lane, color_map, tip_color = init_branch_maps(branches)
     layout = GridLayout()
     sorted_commits = sorted(commits, key=lambda c: -c.committed_at)
@@ -67,7 +74,8 @@ def build_layout(
     )
     build_dummy_nodes(layout, branches, tip_lane, color_map, placed)
     build_edge_graph(layout, parents, placed)
-    for label in _build_branch_labels(branches, tip_lane, color_map, placed):
+    tag_map = _build_tag_map(tags)
+    for label in _build_branch_labels(branches, tip_lane, color_map, placed, tag_map):
         layout.branch_labels.append(label)
     return layout
 
@@ -85,7 +93,7 @@ def build_grid(
         commits: コミットのリスト（新しい順）。
         parents: コミットハッシュ → 親ハッシュリスト のマップ。
         branches: ブランチのリスト。
-        tags: タグのリスト（今後使用予定）。
+        tags: タグのリスト。
         head_hash: HEAD コミットのハッシュ（今後使用予定）。
 
     Returns:
