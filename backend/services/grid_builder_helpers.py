@@ -1,5 +1,5 @@
 # backend/services/grid_builder_helpers.py
-"""グリッドグラフエンジンのヘルパー関数群。"""
+"""グリッドグラフエンジンのレーン割り当てヘルパー関数群。"""
 
 from __future__ import annotations
 
@@ -7,14 +7,31 @@ from backend.models import Branch
 from backend.services.grid_models import GRID_COLORS, GridEdge, GridLayout, GridNode
 
 
-def _e(fl: int, fr: int, tl: int, tr: int, color: str, dashed: bool) -> GridEdge:
-    return GridEdge(from_lane=fl, from_row=fr, to_lane=tl, to_row=tr, color=color, dashed=dashed)
+def _e(
+    from_lane: int, from_row: int, to_lane: int, to_row: int, color: str, dashed: bool
+) -> GridEdge:
+    """GridEdge を生成するショートハンド。"""
+    return GridEdge(
+        from_lane=from_lane,
+        from_row=from_row,
+        to_lane=to_lane,
+        to_row=to_row,
+        color=color,
+        dashed=dashed,
+    )
 
 
 def init_branch_maps(
     branches: list[Branch],
 ) -> tuple[dict[str, int], dict[str, str], dict[str, str]]:
-    """ブランチのレーン・色マップを初期化。"""
+    """ブランチのレーン・色マップを初期化する。
+
+    Args:
+        branches: ブランチのリスト。リスト順にレーン番号を割り当てる。
+
+    Returns:
+        (tip_lane, color_map, tip_color) のタプル。
+    """
     branch_lane: dict[str, int] = {}
     lane_num = 1
     for b in branches:
@@ -45,7 +62,15 @@ def find_matched_idx(
     commit_hash: str,
     active_lanes: list[tuple[int, str, str, str]],
 ) -> int | None:
-    """commit_hash を期待するエントリを探す。"""
+    """commit_hash を期待するエントリのインデックスを返す。見つからない場合は None。
+
+    Args:
+        commit_hash: 検索するコミットハッシュ。
+        active_lanes: アクティブレーンのリスト。
+
+    Returns:
+        一致するインデックス。見つからない場合は None。
+    """
     for i, (_, _bh, expected_h, _) in enumerate(active_lanes):
         if commit_hash == expected_h:
             return i
@@ -61,7 +86,11 @@ def assign_commit_lane(
     used_lane_nums: set[int],
     color_idx: int,
 ) -> tuple[int, str, int]:
-    """レーンと色を決定。競合時は小さい方を優先。"""
+    """レーンと色を決定する。競合時は小さい方を優先する。
+
+    Returns:
+        (lane_num, color, color_idx) のタプル。
+    """
     al_num = active_lanes[matched_idx][0] if matched_idx is not None else None
     al_color = active_lanes[matched_idx][3] if matched_idx is not None else None
     tl_num = tip_lane.get(commit_hash)
@@ -89,7 +118,9 @@ def update_active_lanes(
     color_idx: int,
     placed: dict[str, GridNode],
 ) -> tuple[list[tuple[int, str, str, str]], set[int], int]:
-    """active_lanes 更新し、第2親以降のレーンを予約。"""
+    """active_lanes を更新し、第2親以降のレーンを予約する。"""
+    from backend.services.grid_builder_utils import _reserve_secondary_parents
+
     p1 = commit_parents[0] if commit_parents else None
     new_active: list[tuple[int, str, str, str]] = []
     matched_consumed = False
@@ -102,19 +133,13 @@ def update_active_lanes(
             new_active.append((ln, bh, eh, color))
     if not matched_consumed and p1:
         new_active.append((matched_lane, commit_hash, p1, matched_color))
-    for p2_hash in commit_parents[1:]:
-        if p2_hash in placed:
-            continue
-        p2_lane = next_available_lane(used_lane_nums)
-        p2_color = GRID_COLORS[color_idx % len(GRID_COLORS)]
-        color_idx += 1
-        used_lane_nums.add(p2_lane)
-        new_active.append((p2_lane, commit_hash, p2_hash, p2_color))
-    return new_active, used_lane_nums, color_idx
+    return _reserve_secondary_parents(
+        commit_hash, commit_parents, placed, used_lane_nums, new_active, color_idx
+    )
 
 
 def add_joint_edges(layout: GridLayout, from_node: GridNode, to_node: GridNode) -> None:
-    """複数行のエッジをジョイントで分割。"""
+    """複数行のエッジをジョイントで分割する。"""
     c, cr, fc = from_node.lane, from_node.row, from_node.color
     while cr + 1 < to_node.row:
         nr = cr + 1
@@ -122,31 +147,3 @@ def add_joint_edges(layout: GridLayout, from_node: GridNode, to_node: GridNode) 
         layout.edges.append(_e(c, cr, c, nr, fc, False))
         cr = nr
     layout.edges.append(_e(c, cr, to_node.lane, to_node.row, fc, False))
-
-
-def build_dummy_nodes(
-    layout: GridLayout,
-    branches: list[Branch],
-    tip_lane: dict[str, int],
-    color_map: dict[str, str],
-    placed: dict[str, GridNode],
-) -> None:
-    """branch の tip が row=0 でない場合のダミーを生成。"""
-    for b in branches:
-        tip_h = b.tip_hash
-        if tip_h not in placed or placed[tip_h].row == 0:
-            continue
-        tip_node = placed[tip_h]
-        dl = tip_lane.get(tip_h, tip_node.lane)
-        dc = color_map.get(b.name, GRID_COLORS[0])
-        layout.nodes.append(GridNode(hash=None, lane=dl, row=0, kind="dummy", color=dc))
-        tl, tr = tip_node.lane, tip_node.row
-        if dl == tl:
-            layout.edges.append(_e(dl, 0, tl, tr, dc, True))
-            continue
-        cl, cr = dl, 0
-        for mid_row in range(1, tr):
-            layout.nodes.append(GridNode(hash=None, lane=cl, row=mid_row, kind="joint", color=dc))
-            layout.edges.append(_e(cl, cr, cl, mid_row, dc, True))
-            cr = mid_row
-        layout.edges.append(_e(cl, cr, tl, tr, dc, True))
