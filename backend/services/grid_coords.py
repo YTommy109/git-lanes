@@ -6,6 +6,7 @@ from __future__ import annotations
 from backend.models import Commit
 from backend.services.graph_models import (
     GraphResult,
+    NodeType,
     SvgBranchHeader,
     SvgEdge,
     SvgLabel,
@@ -29,18 +30,23 @@ def _cy(row: int) -> float:
     return float(GRID_ORIGIN_Y + row * GRID_SPACING)
 
 
-def to_svg(layout: GridLayout, commits: list[Commit]) -> GraphResult:
+def to_svg(
+    layout: GridLayout,
+    commits: list[Commit],
+    parents: dict[str, list[str]],
+) -> GraphResult:
     """GridLayout を GraphResult に変換する。
 
     Args:
         layout: グリッドレイアウト（build_layout の返り値）。
         commits: コミットのリスト（SvgNode.commit に渡す）。
+        parents: コミットハッシュ → 親ハッシュリスト のマップ。
 
     Returns:
         SVG テンプレートへ渡す GraphResult。
     """
     commit_map: dict[str, Commit] = {c.hash: c for c in commits}
-    svg_nodes = _build_svg_nodes(layout, commit_map)
+    svg_nodes = _build_svg_nodes(layout, commit_map, parents)
     svg_edges = _build_svg_edges(layout)
     svg_headers = _build_svg_headers(layout)
     canvas_width, canvas_height = _calc_canvas(layout)
@@ -56,6 +62,7 @@ def to_svg(layout: GridLayout, commits: list[Commit]) -> GraphResult:
 def _build_svg_nodes(
     layout: GridLayout,
     commit_map: dict[str, Commit],
+    parents: dict[str, list[str]],
 ) -> list[SvgNode]:
     """GridNode リストを SvgNode リストに変換する。"""
     result: list[SvgNode] = []
@@ -67,6 +74,15 @@ def _build_svg_nodes(
         commit = commit_map.get(node.hash)
         if commit is None:
             continue
+        node_parents = parents.get(node.hash, [])
+        if len(node_parents) == 0:
+            node_type: NodeType = "root"
+        elif len(node_parents) >= 2:
+            node_type = "merge"
+        elif node.row == 0:
+            node_type = "tip"
+        else:
+            node_type = "regular"
         result.append(
             SvgNode(
                 cx=_cx(node.lane),
@@ -74,7 +90,7 @@ def _build_svg_nodes(
                 color=node.color,
                 commit=commit,
                 labels=[],
-                node_type="regular",
+                node_type=node_type,
             )
         )
     return result

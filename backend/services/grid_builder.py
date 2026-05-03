@@ -94,4 +94,4 @@ def build_grid(
     from backend.services.grid_coords import to_svg
 
     layout = build_layout(commits, parents, branches, tags, head_hash)
-    return to_svg(layout, commits)
+    return to_svg(layout, commits, parents)
