@@ -42,10 +42,16 @@ def _mock_mount() -> Path:
     """ローカルテスト用の仮マウントポイントを作成して返す。
 
     Returns:
-        MockApp.app を含む仮マウントポイントの Path。
+        git-lanes-mock.app を含む仮マウントポイントの Path。
     """
     _MOCK_VOLUME.mkdir(parents=True, exist_ok=True)
-    (_MOCK_VOLUME / "MockApp.app").mkdir(exist_ok=True)
+    # cp -R はソース名のままコピーするため、_get_app_path() の名前に合わせる
+    macos = _MOCK_VOLUME / "git-lanes-mock.app" / "Contents" / "MacOS"
+    macos.mkdir(parents=True, exist_ok=True)
+    exe = macos / "git-lanes-mock"
+    if not exe.exists():
+        exe.write_text("#!/bin/bash\n")
+        exe.chmod(0o755)
     return _MOCK_VOLUME
 
 

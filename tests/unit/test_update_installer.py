@@ -212,7 +212,8 @@ def test_mount_dmg_GL_MOCK_DMG環境変数でモックマウントポイント�
     # --- Arrange / Act ---
     with patch.dict(os.environ, {"GL_MOCK_DMG": "/tmp/git-lanes-test.dmg"}):
         with patch.object(Path, "mkdir"):
-            result = installer._mount_dmg("/tmp/git-lanes-test.dmg")
+            with patch.object(Path, "exists", return_value=True):
+                result = installer._mount_dmg("/tmp/git-lanes-test.dmg")
 
     # --- Assert ---
     assert result == installer._MOCK_VOLUME
