@@ -8,14 +8,13 @@ from backend.services.grid_models import GRID_COLORS, GridEdge, GridLayout, Grid
 
 
 def _e(fl: int, fr: int, tl: int, tr: int, color: str, dashed: bool) -> GridEdge:
-    """GridEdge を短い引数で生成する。"""
     return GridEdge(from_lane=fl, from_row=fr, to_lane=tl, to_row=tr, color=color, dashed=dashed)
 
 
 def init_branch_maps(
     branches: list[Branch],
 ) -> tuple[dict[str, int], dict[str, str], dict[str, str]]:
-    """ブランチのレーン番号・色マップを初期化する。"""
+    """ブランチのレーン・色マップを初期化。"""
     branch_lane: dict[str, int] = {}
     lane_num = 1
     for b in branches:
@@ -35,7 +34,7 @@ def init_branch_maps(
 
 
 def next_available_lane(used: set[int]) -> int:
-    """使用済みでない最小のレーン番号を返す。"""
+    """未使用の最小レーン番号を返す。"""
     candidate = 1
     while candidate in used:
         candidate += 1
@@ -46,7 +45,7 @@ def find_matched_idx(
     commit_hash: str,
     active_lanes: list[tuple[int, str, str, str]],
 ) -> int | None:
-    """active_lanes から commit_hash を期待しているエントリを探す。"""
+    """commit_hash を期待するエントリを探す。"""
     for i, (_, _bh, expected_h, _) in enumerate(active_lanes):
         if commit_hash == expected_h:
             return i
@@ -62,13 +61,12 @@ def assign_commit_lane(
     used_lane_nums: set[int],
     color_idx: int,
 ) -> tuple[int, str, int]:
-    """コミットのレーンと色を決定する。競合時はレーン番号が小さい方（先着ブランチ）を優先する。"""
+    """レーンと色を決定。競合時は小さい方を優先。"""
     al_num = active_lanes[matched_idx][0] if matched_idx is not None else None
     al_color = active_lanes[matched_idx][3] if matched_idx is not None else None
     tl_num = tip_lane.get(commit_hash)
     tl_color = tip_color.get(commit_hash)
     if al_num is not None and tl_num is not None:
-        # 競合: レーン番号が小さい方（早期割り当てブランチ）を優先する
         if tl_num <= al_num:
             return tl_num, tl_color or GRID_COLORS[0], color_idx
         return al_num, al_color or GRID_COLORS[0], color_idx
@@ -91,7 +89,7 @@ def update_active_lanes(
     color_idx: int,
     placed: dict[str, GridNode],
 ) -> tuple[list[tuple[int, str, str, str]], set[int], int]:
-    """active_lanes を更新し、マージコミットの第2親以降のレーンを予約する。"""
+    """active_lanes 更新し、第2親以降のレーンを予約。"""
     p1 = commit_parents[0] if commit_parents else None
     new_active: list[tuple[int, str, str, str]] = []
     matched_consumed = False
@@ -104,7 +102,6 @@ def update_active_lanes(
             new_active.append((ln, bh, eh, color))
     if not matched_consumed and p1:
         new_active.append((matched_lane, commit_hash, p1, matched_color))
-    # 第 2 親以降: 未配置のものを新規レーンに予約
     for p2_hash in commit_parents[1:]:
         if p2_hash in placed:
             continue
@@ -117,7 +114,7 @@ def update_active_lanes(
 
 
 def add_joint_edges(layout: GridLayout, from_node: GridNode, to_node: GridNode) -> None:
-    """複数行をまたぐ斜めエッジをジョイントノードで 1 行ずつ分割する。"""
+    """複数行のエッジをジョイントで分割。"""
     c, cr, fc = from_node.lane, from_node.row, from_node.color
     while cr + 1 < to_node.row:
         nr = cr + 1
@@ -134,7 +131,7 @@ def build_dummy_nodes(
     color_map: dict[str, str],
     placed: dict[str, GridNode],
 ) -> None:
-    """named branch の tip が row=0 にない場合のダミーノードとエッジを生成する。"""
+    """branch の tip が row=0 でない場合のダミーを生成。"""
     for b in branches:
         tip_h = b.tip_hash
         if tip_h not in placed or placed[tip_h].row == 0:
@@ -147,7 +144,6 @@ def build_dummy_nodes(
         if dl == tl:
             layout.edges.append(_e(dl, 0, tl, tr, dc, True))
             continue
-        # 別レーン: ジョイント経由でエッジを接続する
         cl, cr = dl, 0
         for mid_row in range(1, tr):
             layout.nodes.append(GridNode(hash=None, lane=cl, row=mid_row, kind="joint", color=dc))

@@ -122,8 +122,6 @@ def build_layout(
 
     build_dummy_nodes(layout, branches, tip_lane, color_map, placed)
     _add_commit_edges(layout, parents, placed)
-
-    # branch_labels 生成
     lane_to_names: dict[int, list[str]] = {}
     lane_to_color: dict[int, str] = {}
     for b in branches:
