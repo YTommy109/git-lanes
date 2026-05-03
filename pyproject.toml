@@ -72,7 +72,7 @@ fail_under = 85
 current_version = "0.4.7"
 commit = true
 commit_args = "--no-verify"
-commit_message = "chore: バージョンを {current_version} から {new_version} に更新する"
+message = "chore: バージョンを {current_version} から {new_version} に更新する"
 tag = false
 
 [[tool.bumpversion.files]]
@@ -89,3 +89,8 @@ replace = '"CFBundleShortVersionString": "{new_version}"'
 filename = "backend/version.py"
 search = '__version__ = "{current_version}"'
 replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "uv.lock"
+search = 'name = "git-lanes"\nversion = "{current_version}"'
+replace = 'name = "git-lanes"\nversion = "{new_version}"'
