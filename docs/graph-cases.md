@@ -319,7 +319,7 @@
 
 - レーン 1（x=50）: main — a2(row=0)、a1(row=2)、a0(row=4)
 - レーン 2（x=80）: 削除済みブランチ 1 — b1(row=1)、ラベル・ダミーなし
-- レーン 3（x=110）: 削除済みブランチ 2 — b0(row=3)、ラベル・ダミーなし
+- レーン 2（x=80）: 削除済みブランチ 2 — b0(row=3)、b1 が a1 に収束した後レーン 2 を再利用、ラベル・ダミーなし
 - a2 → a1 を縦の直線で結ぶ（row 差 = 2、main 色）
 - a2 → b1 を斜めの直線で結ぶ（削除済みブランチ 1 色）
 - b1 → a1 を斜めの直線で結ぶ（削除済みブランチ 1 色）
@@ -328,7 +328,7 @@
 - b0 → a0 を斜めの直線で結ぶ（削除済みブランチ 2 色）
 - ジョイントノード・ダミーノードは不要
 
-<svg width="160" height="220" xmlns="http://www.w3.org/2000/svg">
+<svg width="140" height="220" xmlns="http://www.w3.org/2000/svg">
   <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="125" stroke="#4a9cf6" stroke-width="2"/>
@@ -337,8 +337,8 @@
   <line x1="80" y1="102" x2="50" y2="132" stroke="#f0883e" stroke-width="2"/>
   <circle cx="50" cy="132" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="139" x2="50" y2="185" stroke="#4a9cf6" stroke-width="2"/>
-  <line x1="50" y1="132" x2="110" y2="162" stroke="#3fb950" stroke-width="2"/>
-  <circle cx="110" cy="162" r="7" fill="#3fb950" stroke="#ffffff" stroke-width="2"/>
-  <line x1="110" y1="162" x2="50" y2="192" stroke="#3fb950" stroke-width="2"/>
+  <line x1="50" y1="132" x2="80" y2="162" stroke="#3fb950" stroke-width="2"/>
+  <circle cx="80" cy="162" r="7" fill="#3fb950" stroke="#ffffff" stroke-width="2"/>
+  <line x1="80" y1="162" x2="50" y2="192" stroke="#3fb950" stroke-width="2"/>
   <circle cx="50" cy="192" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
 </svg>
