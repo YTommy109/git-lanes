@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import plistlib
 import subprocess
 import sys
@@ -105,4 +106,6 @@ def install_update() -> InstallResult:
         return "not_frozen"
     _write_updater_script(app_path, mount_point, apps[0])
     subprocess.Popen(["bash", str(_SCRIPT_PATH)])
-    sys.exit(0)
+    # sys.exit() は ThreadPoolExecutor ワーカースレッドしか終了しないため、
+    # プロセス全体を即時終了する os._exit() を使う。
+    os._exit(0)
