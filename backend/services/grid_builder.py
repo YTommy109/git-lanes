@@ -101,5 +101,6 @@ def build_grid(
     """
     from backend.services.grid_coords import to_svg
 
+    tag_map = _build_tag_map(tags)
     layout = build_layout(commits, parents, branches, tags, head_hash)
-    return to_svg(layout, commits, parents)
+    return to_svg(layout, commits, parents, tag_map)

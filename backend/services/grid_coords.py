@@ -34,6 +34,7 @@ def to_svg(
     layout: GridLayout,
     commits: list[Commit],
     parents: dict[str, list[str]],
+    tag_map: dict[str, list[str]] | None = None,
 ) -> GraphResult:
     """GridLayout を GraphResult に変換する。
 
@@ -41,12 +42,13 @@ def to_svg(
         layout: グリッドレイアウト（build_layout の返り値）。
         commits: コミットのリスト（SvgNode.commit に渡す）。
         parents: コミットハッシュ → 親ハッシュリスト のマップ。
+        tag_map: コミットハッシュ → タグ名リストのマップ。非 tip コミットのバッジ表示に使う。
 
     Returns:
         SVG テンプレートへ渡す GraphResult。
     """
     commit_map: dict[str, Commit] = {c.hash: c for c in commits}
-    svg_nodes = _build_svg_nodes(layout, commit_map, parents)
+    svg_nodes = _build_svg_nodes(layout, commit_map, parents, tag_map or {})
     svg_edges = _build_svg_edges(layout)
     svg_headers = _build_svg_headers(layout)
     canvas_width, canvas_height = _calc_canvas(layout)
@@ -59,10 +61,27 @@ def to_svg(
     )
 
 
+def _resolve_node_type(
+    node_hash: str,
+    row: int,
+    parents: dict[str, list[str]],
+) -> NodeType:
+    """コミットのノードタイプを決定する。"""
+    node_parents = parents.get(node_hash, [])
+    if len(node_parents) == 0:
+        return "root"
+    if len(node_parents) >= 2:
+        return "merge"
+    if row == 0:
+        return "tip"
+    return "regular"
+
+
 def _build_svg_nodes(
     layout: GridLayout,
     commit_map: dict[str, Commit],
     parents: dict[str, list[str]],
+    tag_map: dict[str, list[str]],
 ) -> list[SvgNode]:
     """GridNode リストを SvgNode リストに変換する。"""
     result: list[SvgNode] = []
@@ -74,22 +93,20 @@ def _build_svg_nodes(
         commit = commit_map.get(node.hash)
         if commit is None:
             continue
-        node_parents = parents.get(node.hash, [])
-        if len(node_parents) == 0:
-            node_type: NodeType = "root"
-        elif len(node_parents) >= 2:
-            node_type = "merge"
-        elif node.row == 0:
-            node_type = "tip"
-        else:
-            node_type = "regular"
+        node_type = _resolve_node_type(node.hash, node.row, parents)
+        # tip ノードのタグはヘッダー行に表示するため、バッジは付けない
+        labels: list[SvgLabel] = []
+        if node_type != "tip":
+            tag_names = tag_map.get(node.hash, [])
+            if tag_names:
+                labels.append(SvgLabel(text=", ".join(tag_names), kind="tag"))
         result.append(
             SvgNode(
                 cx=_cx(node.lane),
                 cy=_cy(node.row),
                 color=node.color,
                 commit=commit,
-                labels=[],
+                labels=labels,
                 node_type=node_type,
             )
         )

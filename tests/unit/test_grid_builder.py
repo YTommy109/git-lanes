@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from backend.models import Branch, Commit
-from backend.services.grid_builder import build_layout
+from backend.models import Branch, Commit, Tag
+from backend.services.grid_builder import build_grid, build_layout
 from backend.services.grid_models import GridLayout, NodeKind
 
 _REPO = "test-repo"
@@ -31,6 +31,11 @@ def _b(name: str, tip: str) -> Branch:
 def _p(commits: list[Commit], edges: dict[str, list[str]]) -> dict[str, list[str]]:
     """コミットリストと親辺から parents dict を生成する。"""
     return {c.hash: edges.get(c.hash, []) for c in commits}
+
+
+def _t(name: str, commit_hash: str) -> Tag:
+    """テスト用 Tag を生成する。"""
+    return Tag(name=name, repo_id=_REPO, commit_hash=commit_hash)
 
 
 def assert_node(
@@ -283,7 +288,7 @@ def test_ケース7_developがmainより新しい():
     assert "develop" in develop_labels.names
 
 
-def test_ケース13_フィーチャーが進んだ時mainラベルがダミーのレーンに表示される():
+def test_ブランチtipがdummyレーンに表示される():
     # --- Arrange ---
     # feat の tip (c1) は main の tip (b0) より新しく、b0 は feat の祖先になる。
     # branches リストで feat が先なので feat が lane=1、main が lane=4 を取得する。
@@ -502,3 +507,56 @@ def test_ケース12_削除済みブランチを2段階でマージ():
     assert_edge(layout, "a1", "a0", dashed=False)
     assert_edge(layout, "a1", "b0", dashed=False)
     assert_edge(layout, "b0", "a0", dashed=False)
+
+
+def test_ケース15_ブランチtipにタグが付いている():
+    # --- Arrange ---
+    commits = [_c("a1", parents=["a0"], at=2), _c("a0", parents=[], at=1)]
+    branches = [_b("main", "a1")]
+    parents = _p(commits, {"a1": ["a0"]})
+    tags = [_t("v1.0", "a1")]
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=tags)
+
+    # --- Assert ---
+    main_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
+    assert main_labels is not None
+    assert "main" in main_labels.names
+    assert "[v1.0]" in main_labels.names
+
+
+def test_ケース13_コミットにタグが付いている():
+    # --- Arrange ---
+    commits = [_c("a1", parents=["a0"], at=2), _c("a0", parents=[], at=1)]
+    branches = [_b("main", "a1")]
+    parents = _p(commits, {"a1": ["a0"]})
+    tags = [_t("v1.0", "a0")]
+
+    # --- Act ---
+    result = build_grid(commits, parents, branches, tags=tags)
+
+    # --- Assert ---
+    a0_node = next((n for n in result.nodes if n.commit.hash == "a0"), None)
+    assert a0_node is not None
+    tag_labels = [lb for lb in a0_node.labels if lb.kind == "tag"]
+    assert len(tag_labels) == 1
+    assert tag_labels[0].text == "v1.0"
+
+
+def test_ケース14_コミットにタグが2つ付いている():
+    # --- Arrange ---
+    commits = [_c("a1", parents=["a0"], at=2), _c("a0", parents=[], at=1)]
+    branches = [_b("main", "a1")]
+    parents = _p(commits, {"a1": ["a0"]})
+    tags = [_t("v1.0", "a0"), _t("bugfix", "a0")]
+
+    # --- Act ---
+    result = build_grid(commits, parents, branches, tags=tags)
+
+    # --- Assert ---
+    a0_node = next((n for n in result.nodes if n.commit.hash == "a0"), None)
+    assert a0_node is not None
+    tag_labels = [lb for lb in a0_node.labels if lb.kind == "tag"]
+    assert len(tag_labels) == 1
+    assert tag_labels[0].text == "v1.0, bugfix"
