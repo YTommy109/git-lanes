@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import plistlib
 import subprocess
@@ -12,6 +13,8 @@ from typing import Literal
 from backend.services import update_service
 
 _SCRIPT_PATH = Path("/tmp/git-lanes-updater.sh")
+_MOCK_VOLUME = Path("/tmp/git-lanes-mock-volume")
+_logger = logging.getLogger(__name__)
 
 InstallResult = Literal["ok", "no_dmg", "mount_failed", "no_app", "not_frozen"]
 
@@ -19,19 +22,62 @@ InstallResult = Literal["ok", "no_dmg", "mount_failed", "no_app", "not_frozen"]
 def _get_app_path() -> Path | None:
     """PyInstaller 環境での .app バンドルパスを返す。
 
+    GL_MOCK_FROZEN 環境変数が設定されている場合はローカルテスト用パスを返す。
+
     Returns:
-        .app バンドルの Path。開発環境（sys.frozen が偽）なら None。
+        .app バンドルの Path。開発環境かつ GL_MOCK_FROZEN 未設定なら None。
     """
+    if os.environ.get("GL_MOCK_FROZEN"):
+        # ローカルテスト用: /tmp/git-lanes-mock.app を返す
+        mock_app = Path("/tmp/git-lanes-mock.app")
+        mock_app.mkdir(parents=True, exist_ok=True)
+        return mock_app
     if not getattr(sys, "frozen", False):
         return None
     # sys.executable = /Applications/Git Lanes.app/Contents/MacOS/Git Lanes
     return Path(sys.executable).parent.parent.parent
 
 
+def _mock_mount() -> Path:
+    """ローカルテスト用の仮マウントポイントを作成して返す。
+
+    Returns:
+        git-lanes-mock.app を含む仮マウントポイントの Path。
+    """
+    _MOCK_VOLUME.mkdir(parents=True, exist_ok=True)
+    # cp -R はソース名のままコピーするため、_get_app_path() の名前に合わせる
+    macos = _MOCK_VOLUME / "git-lanes-mock.app" / "Contents" / "MacOS"
+    macos.mkdir(parents=True, exist_ok=True)
+    exe = macos / "git-lanes-mock"
+    if not exe.exists():
+        exe.write_text("#!/bin/bash\n")
+        exe.chmod(0o755)
+    return _MOCK_VOLUME
+
+
+def _parse_mount_point(stdout: bytes) -> Path | None:
+    """hdiutil plist 出力からマウントポイントを取得する。
+
+    Args:
+        stdout: hdiutil attach の標準出力（plist 形式）。
+
+    Returns:
+        マウントポイントの Path。見つからない場合は None。
+    """
+    try:
+        plist = plistlib.loads(stdout)
+    except Exception:
+        return None
+    for entity in plist.get("system-entities", []):
+        if "mount-point" in entity:
+            return Path(entity["mount-point"])
+    return None
+
+
 def _mount_dmg(dmg_path: str) -> Path | None:
     """DMG をマウントしてマウントポイントを返す。
 
-    plist 出力で確実にパースする。quarantine 属性を事前に除去する。
+    GL_MOCK_DMG 設定時はモックを返す。quarantine 属性を事前に除去する。
 
     Args:
         dmg_path: DMG ファイルのパス。
@@ -39,10 +85,9 @@ def _mount_dmg(dmg_path: str) -> Path | None:
     Returns:
         マウントポイントの Path。失敗時は None。
     """
-    subprocess.run(
-        ["xattr", "-d", "com.apple.quarantine", dmg_path],
-        capture_output=True,
-    )
+    if os.environ.get("GL_MOCK_DMG"):
+        return _mock_mount()
+    subprocess.run(["xattr", "-d", "com.apple.quarantine", dmg_path], capture_output=True)
     try:
         result = subprocess.run(
             ["hdiutil", "attach", dmg_path, "-nobrowse", "-agree", "-plist"],
@@ -52,14 +97,7 @@ def _mount_dmg(dmg_path: str) -> Path | None:
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return None
-    try:
-        plist = plistlib.loads(result.stdout)
-    except Exception:
-        return None
-    for entity in plist.get("system-entities", []):
-        if "mount-point" in entity:
-            return Path(entity["mount-point"])
-    return None
+    return _parse_mount_point(result.stdout)
 
 
 def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) -> Path:
@@ -90,22 +128,29 @@ def install_update() -> InstallResult:
     """DMG をマウントして .app を差し替え、再起動スクリプトを実行する。
 
     Returns:
-        実行結果コード。成功時は "ok"（その後 sys.exit するため返らない）。
+        実行結果コード。成功時は os._exit(0) を呼ぶため返らない。
     """
     dmg_path = update_service.get_download_state().get("dmg_path")
+    _logger.debug("dmg_path=%s exists=%s", dmg_path, dmg_path and Path(dmg_path).exists())
     if not dmg_path or not Path(dmg_path).exists():
         return "no_dmg"
+    _logger.info("_mount_dmg 開始: %s", dmg_path)
     mount_point = _mount_dmg(dmg_path)
     if mount_point is None:
+        _logger.warning("_mount_dmg 失敗")
         return "mount_failed"
+    _logger.info("マウントポイント: %s", mount_point)
     apps = list(mount_point.glob("*.app"))
+    _logger.info("DMG 内 .app 一覧: %s", apps)
     if not apps:
         return "no_app"
     app_path = _get_app_path()
     if app_path is None:
         return "not_frozen"
-    _write_updater_script(app_path, mount_point, apps[0])
-    subprocess.Popen(["bash", str(_SCRIPT_PATH)])
+    script_path = _write_updater_script(app_path, mount_point, apps[0])
+    _logger.info("更新スクリプト: %s", script_path)
+    subprocess.Popen(["bash", str(script_path)])
     # sys.exit() は ThreadPoolExecutor ワーカースレッドしか終了しないため、
     # プロセス全体を即時終了する os._exit() を使う。
+    _logger.info("プロセスを終了してインストールスクリプトに引き渡す")
     os._exit(0)

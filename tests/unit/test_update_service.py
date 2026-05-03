@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock, patch
 
 import backend.services.update_service as svc
@@ -58,6 +59,28 @@ def test_check_update_キャッシュが効く():
 
     # --- Assert ---
     assert mock_get.call_count == 1
+
+
+def test_check_update_GL_MOCK_DMG環境変数でモック結果を返す():
+    # --- Arrange / Act ---
+    with patch.dict(os.environ, {"GL_MOCK_DMG": "/tmp/git-lanes-test.dmg"}):
+        result = svc.check_update()
+
+    # --- Assert ---
+    assert result["available"] is True
+    assert result["version"] == "999.0.0"
+    assert result["download_url"] is None
+
+
+def test_get_download_state_GL_MOCK_DMG環境変数でdone状態を返す():
+    # --- Arrange / Act ---
+    with patch.dict(os.environ, {"GL_MOCK_DMG": "/tmp/git-lanes-test.dmg"}):
+        result = svc.get_download_state()
+
+    # --- Assert ---
+    assert result["status"] == "done"
+    assert result["percent"] == 100
+    assert result["dmg_path"] == "/tmp/git-lanes-test.dmg"
 
 
 def test_download_update_進捗更新(tmp_path):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import plistlib
 import sys
 from pathlib import Path
@@ -205,6 +206,51 @@ def test_install_update_appなしは_no_app_を返す(tmp_path):
 
     # --- Assert ---
     assert result == "no_app"
+
+
+def test_mount_dmg_GL_MOCK_DMG環境変数でモックマウントポイントを返す():
+    # --- Arrange / Act ---
+    with patch.dict(os.environ, {"GL_MOCK_DMG": "/tmp/git-lanes-test.dmg"}):
+        with patch.object(Path, "mkdir"):
+            with patch.object(Path, "exists", return_value=True):
+                result = installer._mount_dmg("/tmp/git-lanes-test.dmg")
+
+    # --- Assert ---
+    assert result == installer._MOCK_VOLUME
+
+
+def test_get_app_path_GL_MOCK_FROZEN環境変数が設定されている場合モックパスを返す():
+    # --- Arrange / Act ---
+    with patch.dict(os.environ, {"GL_MOCK_FROZEN": "1"}):
+        with patch.object(Path, "mkdir"):
+            result = installer._get_app_path()
+
+    # --- Assert ---
+    assert result == Path("/tmp/git-lanes-mock.app")
+
+
+def test_install_update_GL_MOCK_FROZEN環境変数でフローを実行できる(tmp_path):
+    # --- Arrange ---
+    dmg_file = tmp_path / "test.dmg"
+    dmg_file.touch()
+    svc._download_state.update({"percent": 100, "status": "done", "dmg_path": str(dmg_file)})
+    plist_bytes = _make_plist_bytes("/Volumes/Test")
+    mock_run_result = MagicMock()
+    mock_run_result.stdout = plist_bytes
+    script_path = tmp_path / "git-lanes-updater.sh"
+
+    # --- Act ---
+    with patch.dict(os.environ, {"GL_MOCK_FROZEN": "1"}):
+        with patch("subprocess.run", return_value=mock_run_result):
+            with patch.object(Path, "glob", return_value=[Path("/Volumes/Test/App.app")]):
+                with patch.object(installer, "_SCRIPT_PATH", script_path):
+                    with patch("subprocess.Popen") as mock_popen:
+                        with patch("os._exit") as mock_os_exit:
+                            installer.install_update()
+
+    # --- Assert ---
+    mock_os_exit.assert_called_once_with(0)
+    mock_popen.assert_called_once()
 
 
 def test_install_update_成功時はPopenを呼びos_exitする(tmp_path):
