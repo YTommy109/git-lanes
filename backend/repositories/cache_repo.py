@@ -163,7 +163,10 @@ def purge_graph_data(session: Session, repo_id: str) -> None:
     """
     hashes = [c.hash for c in session.exec(select(Commit).where(Commit.repo_id == repo_id)).all()]
     if hashes:
+        # commit_hash と parent_hash の両方を削除する。
+        # ワークツリー等で同一ハッシュを共有する場合、parent_hash 側の FK 制約に違反するため。
         session.exec(delete(CommitParent).where(CommitParent.commit_hash.in_(hashes)))  # type: ignore[union-attr,arg-type]  # ty:ignore[unresolved-attribute]
+        session.exec(delete(CommitParent).where(CommitParent.parent_hash.in_(hashes)))  # type: ignore[union-attr,arg-type]  # ty:ignore[unresolved-attribute]
     session.exec(delete(Tag).where(Tag.repo_id == repo_id))  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
     session.exec(delete(Branch).where(Branch.repo_id == repo_id))  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
     session.exec(delete(Commit).where(Commit.repo_id == repo_id))  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]

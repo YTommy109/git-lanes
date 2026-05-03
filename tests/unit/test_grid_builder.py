@@ -160,9 +160,10 @@ def test_ケース3_同じコミットを指す2ブランチ():
     assert_node(layout, "a", lane=1, row=0, kind="commit")
     commit_nodes = [n for n in layout.nodes if n.kind == "commit"]
     assert len(commit_nodes) == 1
-    # develop ラベルも lane 1 に存在する
+    # 両ブランチのラベルが lane 1 に存在する
     lane1_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
     assert lane1_labels is not None
+    assert "main" in lane1_labels.names
     assert "develop" in lane1_labels.names
 
 
@@ -272,6 +273,48 @@ def test_ケース7_developがmainより新しい():
     assert_edge_coords(layout, 1, 0, 1, 1, dashed=True)
     # b1→a0 斜め実線
     assert_edge(layout, "b1", "a0", dashed=False)
+    # main のラベルは lane=1（ダミーの位置）
+    main_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
+    assert main_labels is not None
+    assert "main" in main_labels.names
+    # develop のラベルは lane=4
+    develop_labels = next((lb for lb in layout.branch_labels if lb.lane == 4), None)
+    assert develop_labels is not None
+    assert "develop" in develop_labels.names
+
+
+def test_ケース13_フィーチャーが進んだ時mainラベルがダミーのレーンに表示される():
+    # --- Arrange ---
+    # feat の tip (c1) は main の tip (b0) より新しく、b0 は feat の祖先になる。
+    # branches リストで feat が先なので feat が lane=1、main が lane=4 を取得する。
+    # b0 はコミット配置で feat の流れ (lane=1) に吸収されるため placed[b0].lane=1 になるが、
+    # main のラベルはダミーノードがある lane=4 に表示されなければならない。
+    commits = [
+        _c("c1", parents=["b0"], at=2),
+        _c("b0", parents=[], at=1),
+    ]
+    branches = [_b("feat", "c1"), _b("main", "b0")]
+    parents = _p(commits, {"c1": ["b0"]})
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    assert_node(layout, "c1", lane=1, row=0, kind="commit")
+    assert_node(layout, "b0", lane=1, row=1, kind="commit")
+    # main のダミーが lane=4, row=0 にある
+    main_dummies = [n for n in layout.nodes if n.kind == "dummy" and n.lane == 4]
+    assert len(main_dummies) == 1
+    assert_edge_coords(layout, 4, 0, 1, 1, dashed=True)
+    # feat のラベルは lane=1
+    feat_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
+    assert feat_labels is not None
+    assert "feat" in feat_labels.names
+    # main のラベルは lane=4（ダミーの位置）であり、lane=1 には含まれない
+    main_labels = next((lb for lb in layout.branch_labels if lb.lane == 4), None)
+    assert main_labels is not None, "main のラベルが lane=4 に存在しない"
+    assert "main" in main_labels.names
+    assert "main" not in (feat_labels.names if feat_labels else [])
 
 
 def test_ケース8_マージ済みブランチ名削除済み():
