@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pygit2
@@ -19,6 +20,7 @@ from backend.validation import parse_commit_hash, parse_repo_id
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter(tags=["html"])
+_logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -52,6 +54,7 @@ async def graph_page(
     parents = cache_repo.parents_by_child(session, [r.hash for r in rows])
     branches = cache_repo.list_branches(session, rid)
     tags = cache_repo.list_tags(session, rid)
+    _logger.debug("グラフ描画: repo_id=%s commits=%d branches=%d", rid, len(rows), len(branches))
     result = grid_builder.build_grid(rows, parents, branches, tags, rec.cached_head)
     context: dict = {
         "repo_id": rid,

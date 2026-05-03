@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 from typing import Annotated
@@ -19,6 +20,7 @@ from backend.repositories.git_repo import open_repository
 from backend.services.watch_service import WatchService
 
 router = APIRouter(tags=["api"])
+_logger = logging.getLogger(__name__)
 
 
 def _get_watch_service(request: Request) -> WatchService | None:
@@ -42,6 +44,7 @@ async def register_repository(
         raise HTTPException(status_code=400, detail="Git リポジトリとして開けません") from exc
     repo_id = str(uuid.uuid4())
     existing = cache_repo.get_repository_by_path(session, str(resolved))
+    _logger.info("リポジトリ登録: path=%s 既存=%s", resolved, existing is not None)
     watch_svc = _get_watch_service(request)
     if existing is not None:
         if watch_svc is not None:
