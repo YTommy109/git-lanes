@@ -1,5 +1,6 @@
 # グラフ描画ケース集
 
+<!-- markdownlint-disable MD033 MD036 -->
 <!-- constrained-by ./graph-algorithm.md -->
 
 各ケースの「条件」と「期待する表示」を SVG で示す。
@@ -299,4 +300,45 @@
   <circle cx="80" cy="132" r="7" fill="#f0883e" stroke="#ffffff" stroke-width="2"/>
   <line x1="80" y1="132" x2="50" y2="162" stroke="#f0883e" stroke-width="2"/>
   <circle cx="50" cy="162" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+</svg>
+
+---
+
+## ケース 12: 削除済みブランチを 2 段階でマージ
+
+**条件**
+
+- main の tip = a2
+- a2 はマージコミット: 第 1 親 = a1（main 継続）、第 2 親 = b1（削除済みブランチ 1）
+- b1 は a1 から派生したコミット（b1.親 = a1）
+- a1 もマージコミット: 第 1 親 = a0（main 継続）、第 2 親 = b0（削除済みブランチ 2）
+- b0 は a0 から派生したコミット（b0.親 = a0）
+- 削除済みブランチ 1（b1）・削除済みブランチ 2（b0）はいずれもブランチ名なし
+
+**期待する表示**
+
+- レーン 1（x=50）: main — a2(row=0)、a1(row=2)、a0(row=4)
+- レーン 2（x=80）: 削除済みブランチ 1 — b1(row=1)、ラベル・ダミーなし
+- レーン 3（x=110）: 削除済みブランチ 2 — b0(row=3)、ラベル・ダミーなし
+- a2 → a1 を縦の直線で結ぶ（row 差 = 2、main 色）
+- a2 → b1 を斜めの直線で結ぶ（削除済みブランチ 1 色）
+- b1 → a1 を斜めの直線で結ぶ（削除済みブランチ 1 色）
+- a1 → a0 を縦の直線で結ぶ（row 差 = 2、main 色）
+- a1 → b0 を斜めの直線で結ぶ（削除済みブランチ 2 色）
+- b0 → a0 を斜めの直線で結ぶ（削除済みブランチ 2 色）
+- ジョイントノード・ダミーノードは不要
+
+<svg width="160" height="220" xmlns="http://www.w3.org/2000/svg">
+  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+  <line x1="50" y1="79" x2="50" y2="125" stroke="#4a9cf6" stroke-width="2"/>
+  <line x1="50" y1="72" x2="80" y2="102" stroke="#f0883e" stroke-width="2"/>
+  <circle cx="80" cy="102" r="7" fill="#f0883e" stroke="#ffffff" stroke-width="2"/>
+  <line x1="80" y1="102" x2="50" y2="132" stroke="#f0883e" stroke-width="2"/>
+  <circle cx="50" cy="132" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
+  <line x1="50" y1="139" x2="50" y2="185" stroke="#4a9cf6" stroke-width="2"/>
+  <line x1="50" y1="132" x2="110" y2="162" stroke="#3fb950" stroke-width="2"/>
+  <circle cx="110" cy="162" r="7" fill="#3fb950" stroke="#ffffff" stroke-width="2"/>
+  <line x1="110" y1="162" x2="50" y2="192" stroke="#3fb950" stroke-width="2"/>
+  <circle cx="50" cy="192" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
 </svg>
