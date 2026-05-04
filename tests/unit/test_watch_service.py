@@ -119,6 +119,7 @@ def test_sync_失敗時に_notify_を呼ばない(tmp_path, mock_engine):
 
 def test_watch_service_同一パスの二重登録を防ぐ(tmp_path, event_bus, mock_engine):
     # --- Arrange ---
+    (tmp_path / ".git").mkdir()
     svc = WatchService(event_bus, mock_engine)
 
     # --- Act ---
@@ -211,3 +212,66 @@ def test_on_moved_がデバウンスを呼ぶ(tmp_path, event_bus, mock_engine):
 
     # --- Assert ---
     assert call_count == 1
+
+
+def test_sync_リポジトリパスが存在しない場合にon_missingが呼ばれる(
+    tmp_path, event_bus, mock_engine
+):
+    # --- Arrange ---
+    missing_path = tmp_path / "nonexistent"
+    called = []
+    handler = GitEventHandler(
+        "repo1",
+        str(missing_path),
+        event_bus,
+        mock_engine,
+        on_missing=lambda: called.append(True),
+    )
+
+    # --- Act ---
+    handler._sync()
+
+    # --- Assert ---
+    assert called == [True]
+
+
+def test_sync_リポジトリパスが存在しない場合にnotifyを呼ばない(tmp_path, mock_engine):
+    # --- Arrange ---
+    missing_path = tmp_path / "nonexistent"
+    bus = MagicMock(spec=EventBus)
+    handler = GitEventHandler("repo1", str(missing_path), bus, mock_engine)
+
+    # --- Act ---
+    handler._sync()
+
+    # --- Assert ---
+    bus.notify.assert_not_called()
+
+
+def test_watch_service_git_ディレクトリが存在しないパスのwatch登録をスキップする(
+    tmp_path, event_bus, mock_engine
+):
+    # --- Arrange ---
+    svc = WatchService(event_bus, mock_engine)
+    missing_path = tmp_path / "nonexistent"
+
+    # --- Act ---
+    svc.watch("r1", str(missing_path))
+
+    # --- Assert ---
+    assert len(svc._watched_paths) == 0
+
+
+def test_watch_service_unwatch_で監視パスが除去される(tmp_path, event_bus, mock_engine):
+    # --- Arrange ---
+    (tmp_path / ".git").mkdir()
+    svc = WatchService(event_bus, mock_engine)
+    svc.watch("r1", str(tmp_path))
+    git_dir = str(tmp_path / ".git")
+    assert git_dir in svc._watched_paths
+
+    # --- Act ---
+    svc._unwatch(git_dir)
+
+    # --- Assert ---
+    assert git_dir not in svc._watched_paths

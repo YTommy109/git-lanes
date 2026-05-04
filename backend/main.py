@@ -34,6 +34,9 @@ def _start_watch_service(app: FastAPI) -> WatchService:
     watch_svc = WatchService(event_bus, engine)
     with Session(engine) as session:
         for repo in cache_repo.list_repositories(session):
+            if not Path(repo.path).exists():
+                _logger.warning("起動時スキップ: リポジトリが存在しません: %s", repo.path)
+                continue
             watch_svc.watch(repo.id, repo.path)
     watch_svc.start()
     app.state.watch_service = watch_svc
