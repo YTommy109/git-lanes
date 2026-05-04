@@ -119,6 +119,14 @@ table "branches" {
     null    = false
     default = 0
   }
+  column "fork_hash" {
+    type = text
+    null = true
+  }
+  column "fork_committed_at" {
+    type = integer
+    null = true
+  }
   column "repo_id" {
     type = text
     null = false

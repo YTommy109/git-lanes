@@ -6,6 +6,8 @@ from __future__ import annotations
 from itertools import groupby
 
 from backend.models import Branch, Commit, Tag
+from backend.services.fork_point import ForkData, compute_fork_data
+from backend.services.fork_point_sort import sort_branches_by_fork_data
 from backend.services.graph_models import GraphResult
 from backend.services.grid_builder_helpers import init_branch_maps
 from backend.services.grid_builder_layout import build_dummy_nodes, build_edge_graph
@@ -59,9 +61,13 @@ def build_layout(
     branches: list[Branch],
     tags: list[Tag],
     head_hash: str | None = None,
+    fork_data: dict[str, ForkData] | None = None,
 ) -> GridLayout:
     """グリッドレイアウトを計算する。"""
-    tip_lane, color_map, tip_color = init_branch_maps(branches)
+    if fork_data is None:
+        fork_data = compute_fork_data(commits, parents, branches)
+    sorted_branches = sort_branches_by_fork_data(branches, fork_data)
+    tip_lane, color_map, tip_color = init_branch_maps(sorted_branches)
     layout = GridLayout()
     sorted_commits = sorted(commits, key=lambda c: -c.committed_at)
     placed = _place_commits(
@@ -72,10 +78,10 @@ def build_layout(
         set(tip_lane.values()),
         layout,
     )
-    build_dummy_nodes(layout, branches, tip_lane, color_map, placed)
+    build_dummy_nodes(layout, sorted_branches, tip_lane, color_map, placed)
     build_edge_graph(layout, parents, placed)
     tag_map = _build_tag_map(tags)
-    for label in _build_branch_labels(branches, tip_lane, color_map, placed, tag_map):
+    for label in _build_branch_labels(sorted_branches, tip_lane, color_map, placed, tag_map):
         layout.branch_labels.append(label)
     return layout
 
@@ -86,6 +92,7 @@ def build_grid(
     branches: list[Branch],
     tags: list[Tag],
     head_hash: str | None = None,
+    fork_data: dict[str, ForkData] | None = None,
 ) -> GraphResult:
     """グリッドエンジンでグラフを構築して GraphResult を返す。
 
@@ -102,5 +109,5 @@ def build_grid(
     from backend.services.grid_coords import to_svg
 
     tag_map = _build_tag_map(tags)
-    layout = build_layout(commits, parents, branches, tags, head_hash)
+    layout = build_layout(commits, parents, branches, tags, head_hash, fork_data)
     return to_svg(layout, commits, parents, tag_map)
