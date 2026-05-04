@@ -4,6 +4,7 @@
 <div
   hx-ext="sse"
   sse-connect="/repos/{{ repo_id }}/events"
+  hx-trigger="sse:reload"
   _="on sse:reload call window.location.reload()"
 ></div>
 <div id="commit-tooltip"

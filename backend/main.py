@@ -17,6 +17,7 @@ from backend.repositories import cache_repo
 from backend.routers import api, html, update
 from backend.routers.graph_events import make_router
 from backend.services.event_bus import event_bus
+from backend.services.sync_service import sync_repository
 from backend.services.watch_service import WatchService
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,6 +38,7 @@ def _start_watch_service(app: FastAPI) -> WatchService:
             if not Path(repo.path).exists():
                 _logger.warning("起動時スキップ: リポジトリが存在しません: %s", repo.path)
                 continue
+            sync_repository(session, repo.id, repo.path)
             watch_svc.watch(repo.id, repo.path)
     watch_svc.start()
     app.state.watch_service = watch_svc
