@@ -53,6 +53,8 @@ class Branch(SQLModel, table=True):
     repo_id: str = Field(primary_key=True, foreign_key="repositories.id")
     tip_hash: str = Field(sa_column=Column(String, nullable=False))
     is_remote: int = Field(default=0)
+    fork_hash: str | None = Field(default=None)  # フォークポイントのコミットハッシュ
+    fork_committed_at: int | None = Field(default=None)  # フォークポイントの UNIX タイムスタンプ
 
 
 class Tag(SQLModel, table=True):
