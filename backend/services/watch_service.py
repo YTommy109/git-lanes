@@ -19,6 +19,36 @@ from backend.services.sync_service import sync_repository
 _logger = logging.getLogger(__name__)
 
 
+def _resolve_git_dir(repo_path: str) -> str:
+    """監視する .git ディレクトリのパスを解決する。
+
+    ワークツリーの場合、``gitdir:`` ファイルを解析して共通 ``.git/`` を返す。
+
+    Args:
+        repo_path: Git 作業コピーのルートパス。
+
+    Returns:
+        監視対象の .git ディレクトリの絶対パス文字列。
+    """
+    git_path = Path(repo_path) / ".git"
+    if git_path.is_dir():
+        return str(git_path)
+    if git_path.is_file():
+        content = git_path.read_text(encoding="utf-8").strip()
+        if content.startswith("gitdir:"):
+            linked = Path(content[len("gitdir:") :].strip())
+            if not linked.is_absolute():
+                linked = (git_path.parent / linked).resolve()
+            else:
+                linked = linked.resolve()
+            parts = linked.parts
+            if "worktrees" in parts:
+                idx = list(parts).index("worktrees")
+                return str(Path(*parts[:idx]))
+            return str(linked)
+    return str(git_path)
+
+
 class GitEventHandler(FileSystemEventHandler):
     """`.git` ディレクトリの変化を検知して同期をトリガーする。"""
 
@@ -98,7 +128,7 @@ class WatchService:
             repo_id: リポジトリ ID。
             repo_path: Git 作業ディレクトリのパス。
         """
-        git_dir = str(Path(repo_path) / ".git")
+        git_dir = _resolve_git_dir(repo_path)
         if git_dir in self._watched_paths:
             return
         if not Path(git_dir).exists():

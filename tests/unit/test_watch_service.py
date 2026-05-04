@@ -9,7 +9,7 @@ import pytest
 from watchdog.events import FileCreatedEvent, FileModifiedEvent
 
 from backend.services.event_bus import EventBus
-from backend.services.watch_service import GitEventHandler, WatchService
+from backend.services.watch_service import GitEventHandler, WatchService, _resolve_git_dir
 
 
 @pytest.fixture()
@@ -275,3 +275,59 @@ def test_watch_service_unwatch_で監視パスが除去される(tmp_path, event
 
     # --- Assert ---
     assert git_dir not in svc._watched_paths
+
+
+def test_resolve_git_dir_通常リポジトリはgitディレクトリをそのまま返す(tmp_path):
+    # --- Arrange ---
+    (tmp_path / ".git").mkdir()
+
+    # --- Act ---
+    result = _resolve_git_dir(str(tmp_path))
+
+    # --- Assert ---
+    assert result == str(tmp_path / ".git")
+
+
+def test_resolve_git_dir_ワークツリーは共通gitディレクトリを返す(tmp_path):
+    # --- Arrange ---
+    # 共通 .git/ ディレクトリ（メインリポジトリ）を作成する
+    main_git = tmp_path / "main" / ".git"
+    main_git.mkdir(parents=True)
+    worktree_git_dir = main_git / "worktrees" / "feat"
+    worktree_git_dir.mkdir(parents=True)
+
+    # ワークツリーの .git ファイルを作成する
+    worktree_root = tmp_path / "worktree"
+    worktree_root.mkdir()
+    (worktree_root / ".git").write_text(f"gitdir: {worktree_git_dir}\n", encoding="utf-8")
+
+    # --- Act ---
+    result = _resolve_git_dir(str(worktree_root))
+
+    # --- Assert ---
+    assert result == str(main_git)
+
+
+def test_watch_service_ワークツリーは共通gitディレクトリを監視する(
+    tmp_path, event_bus, mock_engine
+):
+    # --- Arrange ---
+    # 共通 .git/ ディレクトリを持つワークツリー構造を作成する
+    main_git = tmp_path / "main" / ".git"
+    main_git.mkdir(parents=True)
+    worktree_git_dir = main_git / "worktrees" / "feat"
+    worktree_git_dir.mkdir(parents=True)
+
+    worktree_root = tmp_path / "worktree"
+    worktree_root.mkdir()
+    (worktree_root / ".git").write_text(f"gitdir: {worktree_git_dir}\n", encoding="utf-8")
+
+    svc = WatchService(event_bus, mock_engine)
+
+    # --- Act ---
+    svc.watch("r1", str(worktree_root))
+
+    # --- Assert ---
+    # ワークツリーの .git ファイルではなく共通 .git/ ディレクトリが監視される
+    assert str(main_git) in svc._watched_paths
+    assert str(worktree_root / ".git") not in svc._watched_paths
