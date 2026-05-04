@@ -76,7 +76,7 @@ app = BUNDLE(
     icon=str(ROOT / "resources" / "git-lanes.icns"),
     bundle_identifier="com.degino.git-lanes",
     info_plist={
-        "CFBundleShortVersionString": "0.4.9",
+        "CFBundleShortVersionString": "0.4.10",
         "NSHighResolutionCapable": True,
     },
 )
