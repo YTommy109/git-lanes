@@ -10,11 +10,19 @@ from backend.services.event_bus import EventBus
 @pytest.fixture()
 def app_with_events():
     """テスト用 FastAPI アプリ（EventBus 付き）。"""
+    from fastapi.responses import JSONResponse
+
+    from backend.exceptions import AppError
     from backend.routers.graph_events import make_router
 
     bus = EventBus()
     test_app = FastAPI()
     test_app.include_router(make_router(bus))
+
+    @test_app.exception_handler(AppError)
+    async def _app_error_handler(request, exc: AppError) -> JSONResponse:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
     return test_app, bus
 
 

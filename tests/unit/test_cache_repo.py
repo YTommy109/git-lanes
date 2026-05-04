@@ -7,15 +7,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from backend.models import Branch, Commit, Repository
-from backend.repositories import cache_repo
+from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
 
 # ── ヘルパー ──────────────────────────────────────────────
 
 
 def _add_repo(session: Session, repo_id: str = "r1") -> Repository:
     """テスト用リポジトリを登録して返す。"""
-    cache_repo.insert_repository(session, repo_id, f"/path/{repo_id}", repo_id)
-    repo = cache_repo.get_repository(session, repo_id)
+    repository_repo.insert_repository(session, repo_id, f"/path/{repo_id}", repo_id)
+    repo = repository_repo.get_repository(session, repo_id)
     assert repo is not None
     return repo
 
@@ -27,10 +27,10 @@ def _add_commit(
     committed_at: int = 1000,
 ) -> Commit:
     """テスト用コミットを挿入して返す。"""
-    cache_repo.insert_commit_row(
+    commit_repo.insert_commit_row(
         session, repo_id, hash, hash[:7], "msg", "author", "a@b.com", committed_at
     )
-    commit = cache_repo.get_commit(session, repo_id, hash)
+    commit = commit_repo.get_commit(session, repo_id, hash)
     assert commit is not None
     return commit
 
@@ -40,10 +40,10 @@ def _add_commit(
 
 def test_get_repository_存在するIDを返す(session):
     # --- Arrange ---
-    cache_repo.insert_repository(session, "r1", "/path/r1", "r1")
+    repository_repo.insert_repository(session, "r1", "/path/r1", "r1")
 
     # --- Act ---
-    result = cache_repo.get_repository(session, "r1")
+    result = repository_repo.get_repository(session, "r1")
 
     # --- Assert ---
     assert result is not None
@@ -53,7 +53,7 @@ def test_get_repository_存在するIDを返す(session):
 
 def test_get_repository_存在しないIDはNoneを返す(session):
     # --- Act ---
-    result = cache_repo.get_repository(session, "no-such-id")
+    result = repository_repo.get_repository(session, "no-such-id")
 
     # --- Assert ---
     assert result is None
@@ -67,7 +67,7 @@ def test_count_commits_0件(session):
     _add_repo(session)
 
     # --- Act & Assert ---
-    assert cache_repo.count_commits(session, "r1") == 0
+    assert commit_repo.count_commits(session, "r1") == 0
 
 
 def test_count_commits_N件(session):
@@ -77,36 +77,7 @@ def test_count_commits_N件(session):
     _add_commit(session, "r1", "b" * 40)
 
     # --- Act & Assert ---
-    assert cache_repo.count_commits(session, "r1") == 2
-
-
-# ── list_recent_commits ────────────────────────────────────
-
-
-def test_list_recent_commits_committed_at降順(session):
-    # --- Arrange ---
-    _add_repo(session)
-    _add_commit(session, "r1", "a" * 40, committed_at=100)
-    _add_commit(session, "r1", "b" * 40, committed_at=200)
-
-    # --- Act ---
-    rows = cache_repo.list_recent_commits(session, "r1", 10)
-
-    # --- Assert ---
-    assert [r.committed_at for r in rows] == [200, 100]
-
-
-def test_list_recent_commits_limit超えは切り捨て(session):
-    # --- Arrange ---
-    _add_repo(session)
-    for i in range(5):
-        _add_commit(session, "r1", str(i) * 40, committed_at=i)
-
-    # --- Act ---
-    rows = cache_repo.list_recent_commits(session, "r1", 3)
-
-    # --- Assert ---
-    assert len(rows) == 3
+    assert commit_repo.count_commits(session, "r1") == 2
 
 
 # ── get_commit ─────────────────────────────────────────────
@@ -118,7 +89,7 @@ def test_get_commit_存在するコミットを返す(session):
     _add_commit(session, "r1", "a" * 40)
 
     # --- Act ---
-    result = cache_repo.get_commit(session, "r1", "a" * 40)
+    result = commit_repo.get_commit(session, "r1", "a" * 40)
 
     # --- Assert ---
     assert result is not None
@@ -130,7 +101,7 @@ def test_get_commit_存在しないはNoneを返す(session):
     _add_repo(session)
 
     # --- Act ---
-    result = cache_repo.get_commit(session, "r1", "z" * 40)
+    result = commit_repo.get_commit(session, "r1", "z" * 40)
 
     # --- Assert ---
     assert result is None
@@ -141,7 +112,7 @@ def test_get_commit_存在しないはNoneを返す(session):
 
 def test_parents_by_child_空リストは空dictを返す(session):
     # --- Act ---
-    result = cache_repo.parents_by_child(session, [])
+    result = commit_repo.parents_by_child(session, [])
 
     # --- Assert ---
     assert result == {}
@@ -152,11 +123,11 @@ def test_parents_by_child_単親コミット(session):
     _add_repo(session)
     _add_commit(session, "r1", "a" * 40)
     _add_commit(session, "r1", "b" * 40)
-    cache_repo.insert_parent_row(session, "b" * 40, "a" * 40, 0)
+    commit_repo.insert_parent_row(session, "b" * 40, "a" * 40, 0)
     session.commit()
 
     # --- Act ---
-    result = cache_repo.parents_by_child(session, ["b" * 40])
+    result = commit_repo.parents_by_child(session, ["b" * 40])
 
     # --- Assert ---
     assert result == {"b" * 40: ["a" * 40]}
@@ -168,12 +139,12 @@ def test_parents_by_child_マージコミットはposition順(session):
     _add_commit(session, "r1", "a" * 40)
     _add_commit(session, "r1", "b" * 40)
     _add_commit(session, "r1", "c" * 40)
-    cache_repo.insert_parent_row(session, "c" * 40, "a" * 40, 0)
-    cache_repo.insert_parent_row(session, "c" * 40, "b" * 40, 1)
+    commit_repo.insert_parent_row(session, "c" * 40, "a" * 40, 0)
+    commit_repo.insert_parent_row(session, "c" * 40, "b" * 40, 1)
     session.commit()
 
     # --- Act ---
-    result = cache_repo.parents_by_child(session, ["c" * 40])
+    result = commit_repo.parents_by_child(session, ["c" * 40])
 
     # --- Assert ---
     assert result == {"c" * 40: ["a" * 40, "b" * 40]}
@@ -184,21 +155,21 @@ def test_parents_by_child_マージコミットはposition順(session):
 
 def test_insert_repository_正常挿入(session):
     # --- Act ---
-    cache_repo.insert_repository(session, "r1", "/path/r1", "repo1")
+    repository_repo.insert_repository(session, "r1", "/path/r1", "repo1")
 
     # --- Assert ---
-    rec = cache_repo.get_repository(session, "r1")
+    rec = repository_repo.get_repository(session, "r1")
     assert rec is not None
     assert rec.name == "repo1"
 
 
 def test_insert_repository_パス重複はIntegrityError(session):
     # --- Arrange ---
-    cache_repo.insert_repository(session, "r1", "/path/same", "repo1")
+    repository_repo.insert_repository(session, "r1", "/path/same", "repo1")
 
     # --- Act & Assert ---
     with pytest.raises(IntegrityError):
-        cache_repo.insert_repository(session, "r2", "/path/same", "repo2")
+        repository_repo.insert_repository(session, "r2", "/path/same", "repo2")
 
 
 # ── purge_graph_data ───────────────────────────────────────
@@ -209,16 +180,16 @@ def test_purge_graph_data_commit_parents_branches_commitsが削除される(sess
     _add_repo(session)
     _add_commit(session, "r1", "a" * 40)
     _add_commit(session, "r1", "b" * 40)
-    cache_repo.insert_parent_row(session, "b" * 40, "a" * 40, 0)
-    cache_repo.insert_branch_row(session, "r1", "main", "b" * 40, 0)
+    commit_repo.insert_parent_row(session, "b" * 40, "a" * 40, 0)
+    branch_repo.insert_branch_row(session, "r1", "main", "b" * 40, 0)
     session.commit()
 
     # --- Act ---
-    cache_repo.purge_graph_data(session, "r1")
+    repository_repo.purge_graph_data(session, "r1")
 
     # --- Assert ---
-    assert cache_repo.count_commits(session, "r1") == 0
-    assert cache_repo.parents_by_child(session, ["b" * 40]) == {}
+    assert commit_repo.count_commits(session, "r1") == 0
+    assert commit_repo.parents_by_child(session, ["b" * 40]) == {}
 
 
 # ── update_sync_state ──────────────────────────────────────
@@ -230,10 +201,10 @@ def test_update_sync_state_cached_headとsynced_atが更新される(session):
     before = int(time.time())
 
     # --- Act ---
-    cache_repo.update_sync_state(session, "r1", "abc123")
+    repository_repo.update_sync_state(session, "r1", "abc123")
 
     # --- Assert ---
-    rec = cache_repo.get_repository(session, "r1")
+    rec = repository_repo.get_repository(session, "r1")
     assert rec is not None
     assert rec.cached_head == "abc123"
     assert rec.synced_at is not None
@@ -249,13 +220,13 @@ def test_insert_commit_row_重複時はフィールドが更新される(session
     _add_commit(session, "r1", "a" * 40)
 
     # --- Act ---
-    cache_repo.insert_commit_row(
+    commit_repo.insert_commit_row(
         session, "r1", "a" * 40, "aaaaaaa", "updated msg", "new", "n@b.com", 9999
     )
     session.commit()
 
     # --- Assert ---
-    rec = cache_repo.get_commit(session, "r1", "a" * 40)
+    rec = commit_repo.get_commit(session, "r1", "a" * 40)
     assert rec is not None
     assert rec.message == "updated msg"
 
@@ -268,11 +239,11 @@ def test_insert_branch_row_tip_hashが更新される(session):
     _add_repo(session)
     _add_commit(session, "r1", "a" * 40)
     _add_commit(session, "r1", "b" * 40)
-    cache_repo.insert_branch_row(session, "r1", "main", "a" * 40, 0)
+    branch_repo.insert_branch_row(session, "r1", "main", "a" * 40, 0)
     session.commit()
 
     # --- Act ---
-    cache_repo.insert_branch_row(session, "r1", "main", "b" * 40, 0)
+    branch_repo.insert_branch_row(session, "r1", "main", "b" * 40, 0)
     session.commit()
 
     # --- Assert ---
@@ -290,12 +261,12 @@ def test_list_branches_登録済みブランチを返す(session):
     # --- Arrange ---
     _add_repo(session)
     _add_commit(session, "r1", "a" * 40)
-    cache_repo.insert_branch_row(session, "r1", "main", "a" * 40, 0)
-    cache_repo.insert_branch_row(session, "r1", "feat/x", "a" * 40, 0)
+    branch_repo.insert_branch_row(session, "r1", "main", "a" * 40, 0)
+    branch_repo.insert_branch_row(session, "r1", "feat/x", "a" * 40, 0)
     session.commit()
 
     # --- Act ---
-    result = cache_repo.list_branches(session, "r1")
+    result = branch_repo.list_branches(session, "r1")
 
     # --- Assert ---
     assert {b.name for b in result} == {"main", "feat/x"}
@@ -306,7 +277,7 @@ def test_list_branches_ブランチなしは空リスト(session):
     _add_repo(session)
 
     # --- Act ---
-    result = cache_repo.list_branches(session, "r1")
+    result = branch_repo.list_branches(session, "r1")
 
     # --- Assert ---
     assert result == []
@@ -317,11 +288,11 @@ def test_list_branches_ブランチなしは空リスト(session):
 
 def test_list_repositories_複数件をname昇順で返す(session):
     # --- Arrange ---
-    cache_repo.insert_repository(session, "r2", "/path/r2", "zeta")
-    cache_repo.insert_repository(session, "r1", "/path/r1", "alpha")
+    repository_repo.insert_repository(session, "r2", "/path/r2", "zeta")
+    repository_repo.insert_repository(session, "r1", "/path/r1", "alpha")
 
     # --- Act ---
-    result = cache_repo.list_repositories(session)
+    result = repository_repo.list_repositories(session)
 
     # --- Assert ---
     assert [r.name for r in result] == ["alpha", "zeta"]
@@ -329,7 +300,7 @@ def test_list_repositories_複数件をname昇順で返す(session):
 
 def test_list_repositories_0件は空リストを返す(session):
     # --- Act ---
-    result = cache_repo.list_repositories(session)
+    result = repository_repo.list_repositories(session)
 
     # --- Assert ---
     assert result == []
@@ -340,7 +311,7 @@ def test_list_repositories_0件は空リストを返す(session):
 
 def _add_tag(session: Session, repo_id: str, name: str, commit_hash: str) -> None:
     """テスト用タグを挿入する。"""
-    cache_repo.insert_tag_row(session, repo_id, name, commit_hash)
+    tag_repo.insert_tag_row(session, repo_id, name, commit_hash)
     session.commit()
 
 
@@ -353,7 +324,7 @@ def test_insert_tag_row_正常挿入(session):
     _add_tag(session, "r1", "v1.0", "a" * 40)
 
     # --- Assert ---
-    tags = cache_repo.list_tags(session, "r1")
+    tags = tag_repo.list_tags(session, "r1")
     assert len(tags) == 1
     assert tags[0].name == "v1.0"
     assert tags[0].commit_hash == "a" * 40
@@ -367,7 +338,7 @@ def test_list_tags_複数タグを返す(session):
     _add_tag(session, "r1", "v1.0", "a" * 40)
 
     # --- Act ---
-    result = cache_repo.list_tags(session, "r1")
+    result = tag_repo.list_tags(session, "r1")
 
     # --- Assert ---
     assert {t.name for t in result} == {"v0.1", "v1.0"}
@@ -378,7 +349,7 @@ def test_list_tags_タグなしは空を返す(session):
     _add_repo(session)
 
     # --- Act ---
-    result = cache_repo.list_tags(session, "r1")
+    result = tag_repo.list_tags(session, "r1")
 
     # --- Assert ---
     assert result == []
@@ -392,7 +363,7 @@ def test_get_tags_for_commit_該当タグ名リストを返す(session):
     _add_tag(session, "r1", "v1.0-rc1", "a" * 40)
 
     # --- Act ---
-    result = cache_repo.get_tags_for_commit(session, "r1", "a" * 40)
+    result = tag_repo.get_tags_for_commit(session, "r1", "a" * 40)
 
     # --- Assert ---
     assert set(result) == {"v1.0", "v1.0-rc1"}
@@ -404,7 +375,7 @@ def test_get_tags_for_commit_タグなしは空を返す(session):
     _add_commit(session, "r1", "a" * 40)
 
     # --- Act ---
-    result = cache_repo.get_tags_for_commit(session, "r1", "a" * 40)
+    result = tag_repo.get_tags_for_commit(session, "r1", "a" * 40)
 
     # --- Assert ---
     assert result == []
@@ -417,10 +388,10 @@ def test_purge_graph_data_タグも削除される(session):
     _add_tag(session, "r1", "v1.0", "a" * 40)
 
     # --- Act ---
-    cache_repo.purge_graph_data(session, "r1")
+    repository_repo.purge_graph_data(session, "r1")
 
     # --- Assert ---
-    assert cache_repo.list_tags(session, "r1") == []
+    assert tag_repo.list_tags(session, "r1") == []
 
 
 def test_list_all_commits_全件を返す(session):
@@ -430,7 +401,7 @@ def test_list_all_commits_全件を返す(session):
     _add_commit(session, "r1", "b" * 40, committed_at=1)
 
     # --- Act ---
-    result = cache_repo.list_all_commits(session, "r1")
+    result = commit_repo.list_all_commits(session, "r1")
 
     # --- Assert ---
     assert len(result) == 2
@@ -442,7 +413,7 @@ def test_get_repository_by_path_存在するパスを返す(session):
     _add_repo(session)
 
     # --- Act ---
-    result = cache_repo.get_repository_by_path(session, "/path/r1")
+    result = repository_repo.get_repository_by_path(session, "/path/r1")
 
     # --- Assert ---
     assert result is not None
@@ -450,9 +421,9 @@ def test_get_repository_by_path_存在するパスを返す(session):
 
 
 def test_update_sync_state_存在しないリポジトリは何もしない(session):
-    """repo is None のとき早期 return する（cache_repo.py line 183）。"""
+    """repo is None のとき早期 return する。"""
     # --- Arrange / Act ---
-    cache_repo.update_sync_state(session, "nonexistent", "abc")
+    repository_repo.update_sync_state(session, "nonexistent", "abc")
 
     # --- Assert ---: 例外が発生しないことのみ確認
-    assert cache_repo.get_repository(session, "nonexistent") is None
+    assert repository_repo.get_repository(session, "nonexistent") is None

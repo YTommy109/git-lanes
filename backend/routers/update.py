@@ -3,18 +3,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
+from backend.jinja import templates
 from backend.services import update_service
 from backend.services.update_installer import install_update
 
-_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
-templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 router = APIRouter(prefix="/api/update", tags=["update"])
 
 

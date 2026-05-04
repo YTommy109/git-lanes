@@ -9,7 +9,8 @@ import pytest
 from watchdog.events import FileCreatedEvent, FileModifiedEvent
 
 from backend.services.event_bus import EventBus
-from backend.services.watch_service import GitEventHandler, WatchService, _resolve_git_dir
+from backend.services.watch_event_handler import GitEventHandler
+from backend.services.watch_service import WatchService, _resolve_git_dir
 
 
 @pytest.fixture()
@@ -72,7 +73,7 @@ def test_sync_が_sync_repository_を呼ぶ(tmp_path, event_bus, mock_engine):
     repo_id = str(uuid.uuid4())
     handler = GitEventHandler(repo_id, str(repo_path), event_bus, mock_engine)
 
-    with patch("backend.services.watch_service.sync_repository") as mock_sync:
+    with patch("backend.services.watch_event_handler.sync_repository") as mock_sync:
         # --- Act ---
         handler._sync()
 
@@ -92,7 +93,7 @@ def test_sync_後に_event_bus_notify_が呼ばれる(tmp_path, mock_engine):
     bus = MagicMock(spec=EventBus)
     handler = GitEventHandler(repo_id, str(repo_path), bus, mock_engine)
 
-    with patch("backend.services.watch_service.sync_repository"):
+    with patch("backend.services.watch_event_handler.sync_repository"):
         # --- Act ---
         handler._sync()
 
@@ -107,7 +108,7 @@ def test_sync_失敗時に_notify_を呼ばない(tmp_path, mock_engine):
     handler = GitEventHandler(repo_id, str(tmp_path), bus, mock_engine)
 
     with patch(
-        "backend.services.watch_service.sync_repository",
+        "backend.services.watch_event_handler.sync_repository",
         side_effect=Exception("Git error"),
     ):
         # --- Act ---

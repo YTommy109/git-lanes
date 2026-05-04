@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import backend.services.update_installer as installer
+import backend.services.update_mount as mount_module
 import backend.services.update_service as svc
 
 
@@ -88,7 +89,7 @@ def test_mount_dmg_plist_パースで正しいマウントポイントを返す(
 
     # --- Act ---
     with patch("subprocess.run", return_value=mock_result):
-        result = installer._mount_dmg(str(dmg_file))
+        result = mount_module.mount_dmg(str(dmg_file))
 
     # --- Assert ---
     assert result == Path("/Volumes/Git Lanes")
@@ -104,7 +105,7 @@ def test_mount_dmg_hdiutil失敗時はNoneを返す(tmp_path):
 
     # --- Act ---
     with patch("subprocess.run", side_effect=[MagicMock(), error]):
-        result = installer._mount_dmg(str(dmg_file))
+        result = mount_module.mount_dmg(str(dmg_file))
 
     # --- Assert ---
     assert result is None
@@ -166,7 +167,7 @@ def test_mount_dmg_plistパース失敗時はNoneを返す(tmp_path):
 
     # --- Act ---
     with patch("subprocess.run", return_value=mock_result):
-        result = installer._mount_dmg(str(dmg_file))
+        result = mount_module.mount_dmg(str(dmg_file))
 
     # --- Assert ---
     assert result is None
@@ -183,7 +184,7 @@ def test_mount_dmg_mount_pointなしの場合はNoneを返す(tmp_path):
 
     # --- Act ---
     with patch("subprocess.run", return_value=mock_result):
-        result = installer._mount_dmg(str(dmg_file))
+        result = mount_module.mount_dmg(str(dmg_file))
 
     # --- Assert ---
     assert result is None
@@ -213,10 +214,10 @@ def test_mount_dmg_GL_MOCK_DMG環境変数でモックマウントポイント�
     with patch.dict(os.environ, {"GL_MOCK_DMG": "/tmp/git-lanes-test.dmg"}):
         with patch.object(Path, "mkdir"):
             with patch.object(Path, "exists", return_value=True):
-                result = installer._mount_dmg("/tmp/git-lanes-test.dmg")
+                result = mount_module.mount_dmg("/tmp/git-lanes-test.dmg")
 
     # --- Assert ---
-    assert result == installer._MOCK_VOLUME
+    assert result == mount_module._MOCK_VOLUME
 
 
 def test_get_app_path_GL_MOCK_FROZEN環境変数が設定されている場合モックパスを返す():

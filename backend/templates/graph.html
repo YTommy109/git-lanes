@@ -32,7 +32,6 @@
             transform="translate({{ header.cx }}, {{ header.cy - 14 }}) rotate(-45)"
             font-size="11"
             fill="{{ header.color }}"
-            {% if header.is_head %}font-weight="bold"{% endif %}
             pointer-events="none"
           >{{ header.display_text }}</text>
         {% endfor %}
@@ -42,7 +41,7 @@
           <path
             d="{{ edge.d }}"
             stroke="{{ edge.color }}"
-            stroke-width="{% if edge.is_main %}4{% else %}2{% endif %}"
+            stroke-width="2"
             {% if edge.dashed %}stroke-dasharray="4,3"{% endif %}
             fill="none"
           />
