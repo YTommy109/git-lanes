@@ -38,32 +38,25 @@ def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool
     return rec.cached_head != head_hex
 
 
-def _has_missing_tips(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
-    """ローカル・リモートのブランチ先端コミットが DB に未収録なら True を返す。"""
+def _has_change_to_sync(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
+    """コミット追加・ブランチ追加/削除が未収録なら True を返す。
+
+    先端コミットの未収録、DB に存在しないブランチ、git に存在しないブランチをまとめて検知する。
+
+    Args:
+        session: DB セッション。
+        repo_id: リポジトリ ID。
+        repo: pygit2 リポジトリ。
+
+    Returns:
+        再同期が必要なら True。
+    """
     for _, tip in (*iter_local_branches(repo), *iter_remote_branches(repo)):
         if commit_repo.get_commit(session, repo_id, tip) is None:
             return True
-    return False
-
-
-def _has_missing_branches(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
-    """DB に未登録のブランチが存在すれば True を返す。
-
-    既存コミットを先端に持つ新ブランチ（git switch -c など）を検知する。
-    """
-    cached_names = {b.name for b in branch_repo.list_branches(session, repo_id)}
-    all_names = [*repo.branches.local, *repo.branches.remote]
-    return any(name not in cached_names for name in all_names)
-
-
-def _has_extra_branches(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
-    """git に存在しないブランチが DB に残っていれば True を返す。
-
-    ブランチ削除を検知する。
-    """
-    cached_names = {b.name for b in branch_repo.list_branches(session, repo_id)}
-    current_names = {*repo.branches.local, *repo.branches.remote}
-    return bool(cached_names - current_names)
+    cached = {b.name for b in branch_repo.list_branches(session, repo_id)}
+    current = {*repo.branches.local, *repo.branches.remote}
+    return bool(current - cached) or bool(cached - current)
 
 
 def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
@@ -78,11 +71,8 @@ def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     """
     repo = open_repository(repo_path)
     head_hex = _head_hex_or_none(repo)
-    needs_sync = (
-        _should_resync(session, repo_id, head_hex)
-        or _has_missing_tips(session, repo_id, repo)
-        or _has_missing_branches(session, repo_id, repo)
-        or _has_extra_branches(session, repo_id, repo)
+    needs_sync = _should_resync(session, repo_id, head_hex) or _has_change_to_sync(
+        session, repo_id, repo
     )
     if not needs_sync:
         return
