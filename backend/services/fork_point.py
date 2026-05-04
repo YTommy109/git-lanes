@@ -1,9 +1,11 @@
-"""ブランチのフォークポイント計算サービス。"""
+"""ブランチのフォークポイント計算・ソート・永続化サービス。"""
 
 from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+
+from sqlmodel import Session
 
 from backend.models import Branch, Commit
 
@@ -107,3 +109,39 @@ def _derive_fork_data(
         fork_committed_at=fork_commit.committed_at,
         bottom_committed_at=bottom_at,
     )
+
+
+def sort_branches_by_fork_data(
+    branches: list[Branch],
+    fork_data: dict[str, ForkData],
+) -> list[Branch]:
+    """フォークポイントの新しい順にブランチを並べる。None は最右。"""
+
+    def _key(b: Branch) -> tuple[int, int]:
+        data = fork_data.get(b.name)
+        if data is None or data.fork_committed_at is None:
+            return (1, 0)
+        return (-data.fork_committed_at, -(data.bottom_committed_at or 0))
+
+    return sorted(branches, key=_key)
+
+
+def persist_fork_points(
+    session: Session,
+    branches: list[Branch],
+    fork_data: dict[str, ForkData],
+) -> None:
+    """フォークポイントを Branch レコードに書き込む。変更なしはスキップする。"""
+    for branch in branches:
+        data = fork_data.get(branch.name)
+        if data is None:
+            continue
+        if (branch.fork_hash, branch.fork_committed_at) == (
+            data.fork_hash,
+            data.fork_committed_at,
+        ):
+            continue
+        branch.fork_hash = data.fork_hash
+        branch.fork_committed_at = data.fork_committed_at
+        session.add(branch)
+    session.commit()

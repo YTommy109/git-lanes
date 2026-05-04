@@ -67,19 +67,15 @@ def _resolve_lane(
     return lane, color, matched_idx
 
 
-def update_active_lanes(
+def _scan_active_lanes(
     commit_hash: str,
-    commit_parents: list[str],
+    p1: str | None,
     matched_idx: int | None,
     matched_lane: int,
     matched_color: str,
     active_lanes: list[tuple[int, str, str, str]],
-    used_lane_nums: set[int],
-    color_idx: int,
-    placed: dict[str, GridNode],
-) -> tuple[list[tuple[int, str, str, str]], set[int], int]:
-    """active_lanes を更新し、第2親以降のレーンを予約する。"""
-    p1 = commit_parents[0] if commit_parents else None
+) -> tuple[list[tuple[int, str, str, str]], set[int], bool]:
+    """active_lanes をスキャンし、新リストと解放セットを返す。"""
     new_active: list[tuple[int, str, str, str]] = []
     freed: set[int] = set()
     matched_consumed = False
@@ -93,6 +89,25 @@ def update_active_lanes(
             freed.add(ln)
         else:
             new_active.append((ln, bh, eh, color))
+    return new_active, freed, matched_consumed
+
+
+def update_active_lanes(
+    commit_hash: str,
+    commit_parents: list[str],
+    matched_idx: int | None,
+    matched_lane: int,
+    matched_color: str,
+    active_lanes: list[tuple[int, str, str, str]],
+    used_lane_nums: set[int],
+    color_idx: int,
+    placed: dict[str, GridNode],
+) -> tuple[list[tuple[int, str, str, str]], set[int], int]:
+    """active_lanes を更新し、第2親以降のレーンを予約する。"""
+    p1 = commit_parents[0] if commit_parents else None
+    new_active, freed, matched_consumed = _scan_active_lanes(
+        commit_hash, p1, matched_idx, matched_lane, matched_color, active_lanes
+    )
     if not matched_consumed and p1:
         new_active.append((matched_lane, commit_hash, p1, matched_color))
     return _reserve_secondary_parents(

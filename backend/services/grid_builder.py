@@ -6,8 +6,7 @@ from __future__ import annotations
 from itertools import groupby
 
 from backend.models import Branch, Commit, Tag
-from backend.services.fork_point import ForkData, compute_fork_data
-from backend.services.fork_point_sort import sort_branches_by_fork_data
+from backend.services.fork_point import ForkData, compute_fork_data, sort_branches_by_fork_data
 from backend.services.graph_models import GraphResult
 from backend.services.grid_builder_helpers import init_branch_maps
 from backend.services.grid_builder_layout import (

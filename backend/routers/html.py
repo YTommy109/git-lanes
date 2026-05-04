@@ -5,18 +5,15 @@ from __future__ import annotations
 
 import logging
 
-import pygit2
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session
 
 from backend.db import get_session
-from backend.exceptions import CommitNotFoundError, GitOpenError, RepositoryNotFoundError
+from backend.exceptions import CommitNotFoundError, RepositoryNotFoundError
 from backend.jinja import templates
-from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
-from backend.services import grid_builder, sync_service
-from backend.services.fork_point import compute_fork_data
-from backend.services.fork_point_sort import persist_fork_points
+from backend.repositories import commit_repo, repository_repo, tag_repo
+from backend.services import graph_service
 from backend.validation import parse_commit_hash, parse_repo_id
 
 router = APIRouter(tags=["html"])
@@ -46,18 +43,7 @@ async def graph_page(
     rec = repository_repo.get_repository(session, rid)
     if rec is None:
         raise RepositoryNotFoundError
-    try:
-        sync_service.sync_repository(session, rid, rec.path)
-    except pygit2.GitError as exc:
-        raise GitOpenError from exc
-    rows = commit_repo.list_all_commits(session, rid)
-    parents = commit_repo.parents_by_child(session, [r.hash for r in rows])
-    branches = branch_repo.list_branches(session, rid)
-    tags = tag_repo.list_tags(session, rid)
-    _logger.debug("グラフ描画: repo_id=%s commits=%d branches=%d", rid, len(rows), len(branches))
-    fork_data = compute_fork_data(rows, parents, branches)
-    persist_fork_points(session, branches, fork_data)
-    result = grid_builder.build_grid(rows, parents, branches, tags, fork_data)
+    result = graph_service.sync_and_build(session, rid, rec.path)
     context: dict = {
         "repo_id": rid,
         "repo_name": rec.name,
