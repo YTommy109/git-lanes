@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
+from sqlmodel import Session
+
 from backend.models import Branch, Commit
 
 
@@ -114,3 +116,59 @@ def _derive_fork_data(
         fork_committed_at=fork_commit.committed_at,
         bottom_committed_at=bottom_commit.committed_at,
     )
+
+
+def sort_branches_by_fork_data(
+    branches: list[Branch],
+    fork_data: dict[str, ForkData],
+) -> list[Branch]:
+    """フォークポイントの新しい順にブランチを並べる。
+
+    フォークポイントが新しいブランチが左（インデックス小）。
+    フォークポイントが同一の場合は bottom_excl が新しい方が左。
+    フォークポイントが None のブランチは最右。
+
+    Args:
+        branches: ブランチリスト。
+        fork_data: ブランチ名 → ForkData のマップ。
+
+    Returns:
+        ソート済みブランチリスト。
+    """
+
+    def _key(b: Branch) -> tuple[int, int]:
+        data = fork_data.get(b.name)
+        if data is None or data.fork_committed_at is None:
+            return (1, 0)
+        return (-data.fork_committed_at, -(data.bottom_committed_at or 0))
+
+    return sorted(branches, key=_key)
+
+
+def persist_fork_points(
+    session: Session,
+    branches: list[Branch],
+    fork_data: dict[str, ForkData],
+) -> None:
+    """フォークポイントを Branch レコードに書き込む。
+
+    変更がないブランチはスキップする。
+
+    Args:
+        session: SQLModel セッション。
+        branches: 更新対象のブランチリスト。
+        fork_data: ブランチ名 → ForkData のマップ。
+    """
+    for branch in branches:
+        data = fork_data.get(branch.name)
+        if data is None:
+            continue
+        if (branch.fork_hash, branch.fork_committed_at) == (
+            data.fork_hash,
+            data.fork_committed_at,
+        ):
+            continue
+        branch.fork_hash = data.fork_hash
+        branch.fork_committed_at = data.fork_committed_at
+        session.add(branch)
+    session.commit()

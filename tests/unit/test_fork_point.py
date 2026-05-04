@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from backend.models import Branch, Commit
-from backend.services.fork_point import compute_fork_data
+from backend.services.fork_point import ForkData, compute_fork_data, sort_branches_by_fork_data
 
 
 def _c(h: str, at: int) -> Commit:
@@ -130,3 +130,36 @@ def test_フォークポイントがウィンドウ外の場合はNone():
     # --- Assert ---
     assert result["main"].fork_committed_at is None
     assert result["feature"].fork_committed_at is None
+
+
+def test_sort_branches_by_fork_data_でnullが右端になる():
+    # --- Arrange ---
+    branches = [_b("main", tip="A"), _b("feature", tip="B")]
+    fork_data = {
+        "main": ForkData(fork_hash=None, fork_committed_at=None, bottom_committed_at=None),
+        "feature": ForkData(fork_hash="X", fork_committed_at=50, bottom_committed_at=60),
+    }
+
+    # --- Act ---
+    result = sort_branches_by_fork_data(branches, fork_data)
+
+    # --- Assert ---
+    assert result[0].name == "feature"
+    assert result[1].name == "main"
+
+
+def test_sort_branches_by_fork_data_で同一forkはbottomで順序決定():
+    # --- Arrange ---
+    branches = [_b("feat-A", tip="C"), _b("feat-B", tip="D")]
+    fork_data = {
+        "feat-A": ForkData(fork_hash="B", fork_committed_at=10, bottom_committed_at=20),
+        "feat-B": ForkData(fork_hash="B", fork_committed_at=10, bottom_committed_at=15),
+    }
+
+    # --- Act ---
+    result = sort_branches_by_fork_data(branches, fork_data)
+
+    # --- Assert ---
+    # bottom が新しい feat-A (at=20) が左
+    assert result[0].name == "feat-A"
+    assert result[1].name == "feat-B"
