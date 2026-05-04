@@ -59,7 +59,7 @@ async def graph_page(
     _logger.debug("グラフ描画: repo_id=%s commits=%d branches=%d", rid, len(rows), len(branches))
     fork_data = compute_fork_data(rows, parents, branches)
     persist_fork_points(session, branches, fork_data)
-    result = grid_builder.build_grid(rows, parents, branches, tags, rec.cached_head, fork_data)
+    result = grid_builder.build_grid(rows, parents, branches, tags, fork_data)
     context: dict = {
         "repo_id": rid,
         "repo_name": rec.name,

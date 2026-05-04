@@ -80,35 +80,6 @@ def test_count_commits_N件(session):
     assert commit_repo.count_commits(session, "r1") == 2
 
 
-# ── list_recent_commits ────────────────────────────────────
-
-
-def test_list_recent_commits_committed_at降順(session):
-    # --- Arrange ---
-    _add_repo(session)
-    _add_commit(session, "r1", "a" * 40, committed_at=100)
-    _add_commit(session, "r1", "b" * 40, committed_at=200)
-
-    # --- Act ---
-    rows = commit_repo.list_recent_commits(session, "r1", 10)
-
-    # --- Assert ---
-    assert [r.committed_at for r in rows] == [200, 100]
-
-
-def test_list_recent_commits_limit超えは切り捨て(session):
-    # --- Arrange ---
-    _add_repo(session)
-    for i in range(5):
-        _add_commit(session, "r1", str(i) * 40, committed_at=i)
-
-    # --- Act ---
-    rows = commit_repo.list_recent_commits(session, "r1", 3)
-
-    # --- Assert ---
-    assert len(rows) == 3
-
-
 # ── get_commit ─────────────────────────────────────────────
 
 

@@ -60,7 +60,6 @@ def build_layout(
     parents: dict[str, list[str]],
     branches: list[Branch],
     tags: list[Tag],
-    head_hash: str | None = None,
     fork_data: dict[str, ForkData] | None = None,
 ) -> GridLayout:
     """グリッドレイアウトを計算する。"""
@@ -91,7 +90,6 @@ def build_grid(
     parents: dict[str, list[str]],
     branches: list[Branch],
     tags: list[Tag],
-    head_hash: str | None = None,
     fork_data: dict[str, ForkData] | None = None,
 ) -> GraphResult:
     """グリッドエンジンでグラフを構築して GraphResult を返す。
@@ -101,7 +99,6 @@ def build_grid(
         parents: コミットハッシュ → 親ハッシュリスト のマップ。
         branches: ブランチのリスト。
         tags: タグのリスト。
-        head_hash: HEAD コミットのハッシュ（今後使用予定）。
 
     Returns:
         SVG テンプレートへ渡す GraphResult。
@@ -109,5 +106,5 @@ def build_grid(
     from backend.services.grid_coords import to_svg
 
     tag_map = _build_tag_map(tags)
-    layout = build_layout(commits, parents, branches, tags, head_hash, fork_data)
+    layout = build_layout(commits, parents, branches, tags, fork_data)
     return to_svg(layout, commits, parents, tag_map)

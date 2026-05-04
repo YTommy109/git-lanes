@@ -33,7 +33,6 @@ def build_svg_edges(layout: GridLayout) -> list[SvgEdge]:
             SvgEdge(
                 d=f"M {x1} {y1} L {x2} {y2}",
                 color=edge.color,
-                is_main=False,
                 dashed=edge.dashed,
             )
         )

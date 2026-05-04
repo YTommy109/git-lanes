@@ -21,27 +21,6 @@ def count_commits(session: Session, repo_id: str) -> int:
     return session.exec(select(func.count(Commit.hash)).where(Commit.repo_id == repo_id)).one()  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
 
 
-def list_recent_commits(session: Session, repo_id: str, limit: int) -> list[Commit]:
-    """committed_at 降順で最新コミットを返す。
-
-    Args:
-        session: DB セッション。
-        repo_id: リポジトリ ID。
-        limit: 取得上限数。
-
-    Returns:
-        コミットのリスト。新しい順に並ぶ。
-    """
-    return list(
-        session.exec(
-            select(Commit)
-            .where(Commit.repo_id == repo_id)
-            .order_by(Commit.committed_at.desc())  # type: ignore[union-attr]  # ty:ignore[unresolved-attribute]
-            .limit(limit)
-        ).all()
-    )
-
-
 def list_all_commits(session: Session, repo_id: str) -> list[Commit]:
     """コミットを committed_at 降順で全件返す。
 
