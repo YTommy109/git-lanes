@@ -19,6 +19,7 @@
       <p>コミットがありません。</p>
     {% else %}
       <svg
+        id="graph-svg"
         xmlns="http://www.w3.org/2000/svg"
         width="100%"
         height="{{ svg_height }}"
@@ -64,6 +65,8 @@
         {% for node in nodes %}
           <g
             class="commit-node"
+            data-lane="{{ node.lane }}"
+            data-row="{{ node.row }}"
             data-msg="{{ node.commit.message.split('\n')[0] }}"
             hx-get="/repos/{{ repo_id }}/commits/{{ node.commit.hash }}/detail"
             hx-target="#commit-detail"
