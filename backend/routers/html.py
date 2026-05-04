@@ -15,6 +15,8 @@ from sqlmodel import Session
 from backend.db import get_session
 from backend.repositories import cache_repo
 from backend.services import grid_builder, sync_service
+from backend.services.fork_point import compute_fork_data
+from backend.services.fork_point_sort import persist_fork_points
 from backend.validation import parse_commit_hash, parse_repo_id
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -55,6 +57,8 @@ async def graph_page(
     branches = cache_repo.list_branches(session, rid)
     tags = cache_repo.list_tags(session, rid)
     _logger.debug("グラフ描画: repo_id=%s commits=%d branches=%d", rid, len(rows), len(branches))
+    fork_data = compute_fork_data(rows, parents, branches)
+    persist_fork_points(session, branches, fork_data)
     result = grid_builder.build_grid(rows, parents, branches, tags, rec.cached_head)
     context: dict = {
         "repo_id": rid,
