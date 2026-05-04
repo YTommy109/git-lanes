@@ -94,23 +94,16 @@ def _derive_fork_data(
     if bottom_hash is None:
         return ForkData(fork_hash=None, fork_committed_at=None, bottom_committed_at=None)
     bottom_commit = commit_by_hash[bottom_hash]
+    bottom_at = bottom_commit.committed_at
     parent_list = parents.get(bottom_hash, [])
     if not parent_list:
-        return ForkData(
-            fork_hash=None,
-            fork_committed_at=None,
-            bottom_committed_at=bottom_commit.committed_at,
-        )
+        return ForkData(fork_hash=None, fork_committed_at=None, bottom_committed_at=bottom_at)
     fork_hash = parent_list[0]
     fork_commit = commit_by_hash.get(fork_hash)
     if fork_commit is None:
-        return ForkData(
-            fork_hash=fork_hash,
-            fork_committed_at=None,
-            bottom_committed_at=bottom_commit.committed_at,
-        )
+        return ForkData(fork_hash=fork_hash, fork_committed_at=None, bottom_committed_at=bottom_at)
     return ForkData(
         fork_hash=fork_commit.hash,
         fork_committed_at=fork_commit.committed_at,
-        bottom_committed_at=bottom_commit.committed_at,
+        bottom_committed_at=bottom_at,
     )
