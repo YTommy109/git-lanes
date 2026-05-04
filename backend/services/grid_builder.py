@@ -6,6 +6,8 @@ from __future__ import annotations
 from itertools import groupby
 
 from backend.models import Branch, Commit, Tag
+from backend.services.fork_point import compute_fork_data
+from backend.services.fork_point_sort import sort_branches_by_fork_data
 from backend.services.graph_models import GraphResult
 from backend.services.grid_builder_helpers import init_branch_maps
 from backend.services.grid_builder_layout import build_dummy_nodes, build_edge_graph
@@ -61,7 +63,9 @@ def build_layout(
     head_hash: str | None = None,
 ) -> GridLayout:
     """グリッドレイアウトを計算する。"""
-    tip_lane, color_map, tip_color = init_branch_maps(branches)
+    fork_data = compute_fork_data(commits, parents, branches)
+    sorted_branches = sort_branches_by_fork_data(branches, fork_data)
+    tip_lane, color_map, tip_color = init_branch_maps(sorted_branches)
     layout = GridLayout()
     sorted_commits = sorted(commits, key=lambda c: -c.committed_at)
     placed = _place_commits(
@@ -72,10 +76,10 @@ def build_layout(
         set(tip_lane.values()),
         layout,
     )
-    build_dummy_nodes(layout, branches, tip_lane, color_map, placed)
+    build_dummy_nodes(layout, sorted_branches, tip_lane, color_map, placed)
     build_edge_graph(layout, parents, placed)
     tag_map = _build_tag_map(tags)
-    for label in _build_branch_labels(branches, tip_lane, color_map, placed, tag_map):
+    for label in _build_branch_labels(sorted_branches, tip_lane, color_map, placed, tag_map):
         layout.branch_labels.append(label)
     return layout
 

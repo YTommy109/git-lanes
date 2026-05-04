@@ -268,24 +268,27 @@ def test_ケース7_developがmainより新しい():
     layout = build_layout(commits, parents, branches, tags=[])
 
     # --- Assert ---
-    # main のダミーが row=0, lane=1 にある（main tip=a0 は row=1）
-    main_dummies = [n for n in layout.nodes if n.kind == "dummy" and n.lane == 1]
+    # ソート後: develop (fork=a0) → lane=1、main (fork=None) → lane=4
+    # develop の tip=b1 は row=0, lane=1
+    # main の tip=a0 は row=1, lane=1（b1 の親として同じレーンに配置）
+    # main のダミーが row=0, lane=4（main 用の待機レーン）
+    main_dummies = [n for n in layout.nodes if n.kind == "dummy" and n.lane == 4]
     assert len(main_dummies) == 1
     assert main_dummies[0].row == 0
-    assert_node(layout, "b1", lane=4, row=0, kind="commit")
+    assert_node(layout, "b1", lane=1, row=0, kind="commit")
     assert_node(layout, "a0", lane=1, row=1, kind="commit")
-    # ダミー(1,0)→a0(1,1) 縦破線
-    assert_edge_coords(layout, 1, 0, 1, 1, dashed=True)
-    # b1→a0 斜め実線
+    # ダミー(4,0)→a0(1,1) 斜め破線
+    assert_edge_coords(layout, 4, 0, 1, 1, dashed=True)
+    # b1(1,0)→a0(1,1) 縦実線
     assert_edge(layout, "b1", "a0", dashed=False)
-    # main のラベルは lane=1（ダミーの位置）
-    main_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
-    assert main_labels is not None
-    assert "main" in main_labels.names
-    # develop のラベルは lane=4
-    develop_labels = next((lb for lb in layout.branch_labels if lb.lane == 4), None)
+    # develop のラベルは lane=1
+    develop_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
     assert develop_labels is not None
     assert "develop" in develop_labels.names
+    # main のラベルは lane=4（ダミーの位置）
+    main_labels = next((lb for lb in layout.branch_labels if lb.lane == 4), None)
+    assert main_labels is not None
+    assert "main" in main_labels.names
 
 
 def test_ブランチtipがdummyレーンに表示される():
@@ -560,3 +563,69 @@ def test_ケース14_コミットにタグが2つ付いている():
     tag_labels = [lb for lb in a0_node.labels if lb.kind == "tag"]
     assert len(tag_labels) == 1
     assert tag_labels[0].text == "v1.0, bugfix"
+
+
+def test_ケース16_フォークが新しいブランチが左レーン():
+    # --- Arrange ---
+    # main tip=D(50), feat-new tip=F(35, fork=C(30)), feat-old tip=E(15, fork=B(10))
+    # 期待: sort後 main(fork=C=30,bottom=D=50) → lane1
+    #       feat-new(fork=C=30,bottom=F=35) → lane4
+    #       feat-old(fork=B=10) → lane7
+    commits = [
+        _c("D", [], at=50),  # main tip
+        _c("F", [], at=35),  # feat-new tip
+        _c("C", [], at=30),  # 共有
+        _c("E", [], at=15),  # feat-old tip
+        _c("B", [], at=10),  # 共有
+        _c("A", [], at=5),  # root
+    ]
+    parents = _p(
+        commits,
+        {"D": ["C"], "F": ["C"], "C": ["B"], "E": ["B"], "B": ["A"]},
+    )
+    branches = [
+        _b("main", "D"),
+        _b("feat-old", "E"),
+        _b("feat-new", "F"),
+    ]
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    node_D = next(n for n in layout.nodes if n.hash == "D" and n.kind == "commit")
+    node_F = next(n for n in layout.nodes if n.hash == "F" and n.kind == "commit")
+    node_E = next(n for n in layout.nodes if n.hash == "E" and n.kind == "commit")
+    assert node_D.lane == 1, f"main(D) は lane 1 のはず。実際: {node_D.lane}"
+    assert node_F.lane == 4, f"feat-new(F) は lane 4 のはず。実際: {node_F.lane}"
+    assert node_E.lane == 7, f"feat-old(E) は lane 7 のはず。実際: {node_E.lane}"
+
+
+def test_ケース17_フォークNULLのブランチが右端レーン():
+    # --- Arrange ---
+    # main tip=C(30)、feat tip=E(50)、E の親=C
+    # → reach[C] = {C, E}（main の tip C が feat の親コミット）
+    # → main に専有コミットなし → fork=None → ソート時に右に配置
+    # → feat fork=C(at=30) → ソート時に左に配置
+    # → しかし配置時は E は feat 側（lane=1），C は祖先として同じレーンに配置される
+    commits = [
+        _c("E", [], at=50),  # feat tip, parent=C
+        _c("C", [], at=30),  # main tip
+        _c("B", [], at=10),
+        _c("A", [], at=5),
+    ]
+    parents = _p(commits, {"E": ["C"], "C": ["B"], "B": ["A"]})
+    branches = [_b("main", "C"), _b("feat", "E")]
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    # ソート順では feat が左に来るため、feat は lane=1 で配置される
+    # main は fork=None なので通常は右端だが、配置時に C は E の祖先なので同じレーンに配置される
+    assert_node(layout, "E", lane=1, row=0, kind="commit")
+    assert_node(layout, "C", lane=1, row=1, kind="commit")
+    # main のラベルは feat と同じレーン（lane=1）に統合される
+    lane1_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
+    assert lane1_labels is not None
+    assert "feat" in lane1_labels.names
