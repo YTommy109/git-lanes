@@ -65,8 +65,13 @@ function tryLoadNextPage(lane, row) {
   );
 }
 
+/** SVG <g> 要素は click() を持たないため dispatchEvent でクリックを発火する */
+function fireClick(node) {
+  node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+
 function selectNode(node) {
-  node.click();
+  fireClick(node);
   node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -94,14 +99,15 @@ function navigate(key) {
 }
 
 document.addEventListener('keydown', (event) => {
-  if (!document.querySelector('#graph-svg')) return;
-  if (document.activeElement?.tagName === 'INPUT') return;
+  const svg = document.querySelector('#graph-svg');
+  if (!svg) return;
+  if (document.activeElement !== svg) return;
 
   if (event.key === ' ') {
     const selected = findSelectedNode();
     if (selected) {
       event.preventDefault();
-      selected.click();
+      fireClick(selected);
     }
     return;
   }
