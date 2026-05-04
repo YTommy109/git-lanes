@@ -13,7 +13,7 @@ from sqlmodel import Session
 
 from backend.db import create_db_and_tables, engine
 from backend.logging_config import get_log_path, setup_logging
-from backend.repositories import cache_repo
+from backend.repositories import repository_repo
 from backend.routers import api, html, update
 from backend.routers.graph_events import make_router
 from backend.services.event_bus import event_bus
@@ -34,7 +34,7 @@ def _start_watch_service(app: FastAPI) -> WatchService:
     event_bus.set_loop(loop)
     watch_svc = WatchService(event_bus, engine)
     with Session(engine) as session:
-        for repo in cache_repo.list_repositories(session):
+        for repo in repository_repo.list_repositories(session):
             if not Path(repo.path).exists():
                 _logger.warning("起動時スキップ: リポジトリが存在しません: %s", repo.path)
                 continue

@@ -13,7 +13,7 @@ from sqlalchemy import event as sqla_event
 from sqlmodel import Session, SQLModel
 
 import backend.models  # noqa: F401 — テーブル登録のため必要
-from backend.repositories import cache_repo
+from backend.repositories import commit_repo, repository_repo
 from backend.services import sync_service
 from backend.services.event_bus import EventBus
 from backend.services.watch_service import WatchService
@@ -56,7 +56,7 @@ def test_コミット後にwatchdogがnotifyを呼ぶ(tmp_path, watch_engine):
     repo_id = str(uuid.uuid4())
 
     with Session(watch_engine) as session:
-        cache_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+        repository_repo.insert_repository(session, repo_id, str(repo_path), "repo")
         sync_service.sync_repository(session, repo_id, str(repo_path))
 
     bus = MagicMock(spec=EventBus)
@@ -81,9 +81,9 @@ def test_コミット後にSQLiteが更新される(tmp_path, watch_engine):
     repo_id = str(uuid.uuid4())
 
     with Session(watch_engine) as session:
-        cache_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+        repository_repo.insert_repository(session, repo_id, str(repo_path), "repo")
         sync_service.sync_repository(session, repo_id, str(repo_path))
-        count_before = cache_repo.count_commits(session, repo_id)
+        count_before = commit_repo.count_commits(session, repo_id)
 
     bus = MagicMock(spec=EventBus)
     svc = WatchService(bus, watch_engine)
@@ -99,5 +99,5 @@ def test_コミット後にSQLiteが更新される(tmp_path, watch_engine):
 
     # --- Assert ---
     with Session(watch_engine) as session:
-        count_after = cache_repo.count_commits(session, repo_id)
+        count_after = commit_repo.count_commits(session, repo_id)
     assert count_after == count_before + 1

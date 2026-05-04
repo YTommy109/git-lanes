@@ -13,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 
 from backend.db import get_session
-from backend.repositories import cache_repo
+from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
 from backend.services import grid_builder, sync_service
 from backend.services.fork_point import compute_fork_data
 from backend.services.fork_point_sort import persist_fork_points
@@ -31,7 +31,7 @@ async def welcome(
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
     """ウェルカム画面を返す。"""
-    repos = cache_repo.list_repositories(session)
+    repos = repository_repo.list_repositories(session)
     return templates.TemplateResponse(
         request, "welcome.html", {"repos": repos, "current_repo_id": None}
     )
@@ -45,17 +45,17 @@ async def graph_page(
 ) -> HTMLResponse:
     """ブランチグラフ画面を返す。"""
     rid = parse_repo_id(repo_id)
-    rec = cache_repo.get_repository(session, rid)
+    rec = repository_repo.get_repository(session, rid)
     if rec is None:
         raise HTTPException(status_code=404, detail="リポジトリが見つかりません")
     try:
         sync_service.sync_repository(session, rid, rec.path)
     except pygit2.GitError as exc:
         raise HTTPException(status_code=400, detail="Git リポジトリを開けません") from exc
-    rows = cache_repo.list_all_commits(session, rid)
-    parents = cache_repo.parents_by_child(session, [r.hash for r in rows])
-    branches = cache_repo.list_branches(session, rid)
-    tags = cache_repo.list_tags(session, rid)
+    rows = commit_repo.list_all_commits(session, rid)
+    parents = commit_repo.parents_by_child(session, [r.hash for r in rows])
+    branches = branch_repo.list_branches(session, rid)
+    tags = tag_repo.list_tags(session, rid)
     _logger.debug("グラフ描画: repo_id=%s commits=%d branches=%d", rid, len(rows), len(branches))
     fork_data = compute_fork_data(rows, parents, branches)
     persist_fork_points(session, branches, fork_data)
@@ -68,7 +68,7 @@ async def graph_page(
         "branch_headers": result.branch_headers,
         "svg_width": result.canvas_width,
         "svg_height": result.canvas_height,
-        "repos": cache_repo.list_repositories(session),
+        "repos": repository_repo.list_repositories(session),
         "current_repo_id": rid,
     }
     return templates.TemplateResponse(request, "graph.html", context)
@@ -87,10 +87,10 @@ async def commit_detail(
     """コミット詳細の HTML 断片を返す（htmx 用）。"""
     rid = parse_repo_id(repo_id)
     ch = parse_commit_hash(commit_hash)
-    row = cache_repo.get_commit(session, rid, ch)
+    row = commit_repo.get_commit(session, rid, ch)
     if row is None:
         raise HTTPException(status_code=404, detail="コミットが見つかりません")
-    tags = cache_repo.get_tags_for_commit(session, rid, ch)
+    tags = tag_repo.get_tags_for_commit(session, rid, ch)
     return templates.TemplateResponse(
         request, "partials/detail.html", {"commit": row, "tags": tags}
     )

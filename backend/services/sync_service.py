@@ -7,7 +7,7 @@ import logging
 import pygit2
 from sqlmodel import Session
 
-from backend.repositories import cache_repo
+from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
 from backend.repositories.git_repo import (
     iter_local_branches,
     iter_remote_branches,
@@ -27,13 +27,13 @@ def _head_hex_or_none(repo: pygit2.Repository) -> str | None:
 
 
 def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool:
-    if cache_repo.get_repository(session, repo_id) is None:
+    if repository_repo.get_repository(session, repo_id) is None:
         return False
     if head_hex is None:
         return True
-    if cache_repo.count_commits(session, repo_id) == 0:
+    if commit_repo.count_commits(session, repo_id) == 0:
         return True
-    rec = cache_repo.get_repository(session, repo_id)
+    rec = repository_repo.get_repository(session, repo_id)
     assert rec is not None
     return rec.cached_head != head_hex
 
@@ -41,7 +41,7 @@ def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool
 def _has_missing_tips(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
     """ローカル・リモートのブランチ先端コミットが DB に未収録なら True を返す。"""
     for _, tip in (*iter_local_branches(repo), *iter_remote_branches(repo)):
-        if cache_repo.get_commit(session, repo_id, tip) is None:
+        if commit_repo.get_commit(session, repo_id, tip) is None:
             return True
     return False
 
@@ -51,7 +51,7 @@ def _has_missing_branches(session: Session, repo_id: str, repo: pygit2.Repositor
 
     既存コミットを先端に持つ新ブランチ（git switch -c など）を検知する。
     """
-    cached_names = {b.name for b in cache_repo.list_branches(session, repo_id)}
+    cached_names = {b.name for b in branch_repo.list_branches(session, repo_id)}
     all_names = [*repo.branches.local, *repo.branches.remote]
     return any(name not in cached_names for name in all_names)
 
@@ -61,7 +61,7 @@ def _has_extra_branches(session: Session, repo_id: str, repo: pygit2.Repository)
 
     ブランチ削除を検知する。
     """
-    cached_names = {b.name for b in cache_repo.list_branches(session, repo_id)}
+    cached_names = {b.name for b in branch_repo.list_branches(session, repo_id)}
     current_names = {*repo.branches.local, *repo.branches.remote}
     return bool(cached_names - current_names)
 
@@ -86,9 +86,9 @@ def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     )
     if not needs_sync:
         return
-    cache_repo.purge_graph_data(session, repo_id)
+    repository_repo.purge_graph_data(session, repo_id)
     if head_hex is None:
-        cache_repo.update_sync_state(session, repo_id, None)
+        repository_repo.update_sync_state(session, repo_id, None)
         return
     _sync_commits_and_branches(session, repo_id, repo, head_hex)
 
@@ -102,8 +102,8 @@ def _sync_tags(session: Session, repo_id: str, repo: pygit2.Repository) -> None:
         repo: pygit2 リポジトリ。
     """
     for tag_name, commit_hash in iter_tags(repo):
-        if cache_repo.get_commit(session, repo_id, commit_hash) is not None:
-            cache_repo.insert_tag_row(session, repo_id, tag_name, commit_hash)
+        if commit_repo.get_commit(session, repo_id, commit_hash) is not None:
+            tag_repo.insert_tag_row(session, repo_id, tag_name, commit_hash)
 
 
 def _sync_parents(session: Session, commits: list) -> None:
@@ -115,7 +115,7 @@ def _sync_parents(session: Session, commits: list) -> None:
     """
     for c in commits:
         for pos, parent_id in enumerate(c.parent_ids):
-            cache_repo.insert_parent_row(session, str(c.id), str(parent_id), pos)
+            commit_repo.insert_parent_row(session, str(c.id), str(parent_id), pos)
 
 
 def _sync_commits_and_branches(
@@ -138,7 +138,7 @@ def _sync_commits_and_branches(
     for c in commits:
         message_line = c.message.split("\n", 1)[0]
         cid = str(c.id)
-        cache_repo.insert_commit_row(
+        commit_repo.insert_commit_row(
             session,
             repo_id,
             cid,
@@ -151,11 +151,11 @@ def _sync_commits_and_branches(
     _sync_parents(session, commits)
     try:
         for branch_name, tip in iter_local_branches(repo):
-            cache_repo.insert_branch_row(session, repo_id, branch_name, tip, 0)
+            branch_repo.insert_branch_row(session, repo_id, branch_name, tip, 0)
         for branch_name, tip in iter_remote_branches(repo):
-            cache_repo.insert_branch_row(session, repo_id, branch_name, tip, 1)
+            branch_repo.insert_branch_row(session, repo_id, branch_name, tip, 1)
     except pygit2.GitError:
         pass
     _sync_tags(session, repo_id, repo)
     session.commit()
-    cache_repo.update_sync_state(session, repo_id, head_hex)
+    repository_repo.update_sync_state(session, repo_id, head_hex)
