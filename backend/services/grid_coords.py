@@ -56,6 +56,16 @@ def _resolve_node_type(
     return "tip" if row == 0 else "regular"
 
 
+def _build_tag_labels(
+    node_hash: str, node_type: NodeType, tag_map: dict[str, list[str]]
+) -> list[SvgLabel]:
+    """tip 以外のノードのタグバッジを返す。tip はヘッダー行に表示するためバッジは付けない。"""
+    if node_type == "tip":
+        return []
+    tag_names = tag_map.get(node_hash, [])
+    return [SvgLabel(text=", ".join(tag_names), kind="tag")] if tag_names else []
+
+
 def _build_svg_nodes(
     layout: GridLayout,
     commit_map: dict[str, Commit],
@@ -71,19 +81,13 @@ def _build_svg_nodes(
         if commit is None:
             continue
         node_type = _resolve_node_type(node.hash, node.row, parents)
-        # tip ノードのタグはヘッダー行に表示するため、バッジは付けない
-        labels: list[SvgLabel] = []
-        if node_type != "tip":
-            tag_names = tag_map.get(node.hash, [])
-            if tag_names:
-                labels.append(SvgLabel(text=", ".join(tag_names), kind="tag"))
         result.append(
             SvgNode(
                 cx=_cx(node.lane),
                 cy=_cy(node.row),
                 color=node.color,
                 commit=commit,
-                labels=labels,
+                labels=_build_tag_labels(node.hash, node_type, tag_map),
                 node_type=node_type,
             )
         )
