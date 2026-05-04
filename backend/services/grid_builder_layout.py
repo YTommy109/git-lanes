@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from backend.models import Branch
-from backend.services.grid_builder_helpers import _e, add_joint_edges
+from backend.services.grid_builder_helpers import _make_edge, add_joint_edges
 from backend.services.grid_models import GRID_COLORS, GridBranchLabel, GridLayout, GridNode
 
 
@@ -17,14 +17,14 @@ def _add_dummy_edges_for_branch(
 ) -> None:
     """ダミーノードから tip コミットへのエッジを生成する。"""
     if dl == tl:
-        layout.edges.append(_e(dl, 0, tl, tr, dc, True))
+        layout.edges.append(_make_edge(dl, 0, tl, tr, dc, True))
         return
     cl, cr = dl, 0
     for mid_row in range(1, tr):
         layout.nodes.append(GridNode(hash=None, lane=cl, row=mid_row, kind="joint", color=dc))
-        layout.edges.append(_e(cl, cr, cl, mid_row, dc, True))
+        layout.edges.append(_make_edge(cl, cr, cl, mid_row, dc, True))
         cr = mid_row
-    layout.edges.append(_e(cl, cr, tl, tr, dc, True))
+    layout.edges.append(_make_edge(cl, cr, tl, tr, dc, True))
 
 
 def build_dummy_nodes(
@@ -75,7 +75,7 @@ def build_edge_graph(
             p_node = placed[p_hash]
             if node.lane == p_node.lane or abs(p_node.row - node.row) == 1:
                 layout.edges.append(
-                    _e(node.lane, node.row, p_node.lane, p_node.row, node.color, False)
+                    _make_edge(node.lane, node.row, p_node.lane, p_node.row, node.color, False)
                 )
             else:
                 add_joint_edges(layout, node, p_node)

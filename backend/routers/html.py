@@ -4,23 +4,20 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import pygit2
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 
 from backend.db import get_session
+from backend.jinja import templates
 from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
 from backend.services import grid_builder, sync_service
 from backend.services.fork_point import compute_fork_data
 from backend.services.fork_point_sort import persist_fork_points
 from backend.validation import parse_commit_hash, parse_repo_id
 
-TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter(tags=["html"])
 _logger = logging.getLogger(__name__)
 

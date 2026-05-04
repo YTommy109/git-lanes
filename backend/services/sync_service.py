@@ -27,14 +27,13 @@ def _head_hex_or_none(repo: pygit2.Repository) -> str | None:
 
 
 def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool:
-    if repository_repo.get_repository(session, repo_id) is None:
+    rec = repository_repo.get_repository(session, repo_id)
+    if rec is None:
         return False
     if head_hex is None:
         return True
     if commit_repo.count_commits(session, repo_id) == 0:
         return True
-    rec = repository_repo.get_repository(session, repo_id)
-    assert rec is not None
     return rec.cached_head != head_hex
 
 
