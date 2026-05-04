@@ -94,28 +94,35 @@ def _sync_branches(session: Session, repo_id: str, repo: pygit2.Repository) -> N
 
 
 def _sync_tags(session: Session, repo_id: str, repo: pygit2.Repository) -> None:
-    """ウォークツリー内のタグをキャッシュに書き込む。
-
-    Args:
-        session: DB セッション。
-        repo_id: リポジトリ ID。
-        repo: pygit2 リポジトリ。
-    """
+    """ウォークツリー内のタグをキャッシュに書き込む。"""
     for tag_name, commit_hash in iter_tags(repo):
         if commit_repo.get_commit(session, repo_id, commit_hash) is not None:
             tag_repo.insert_tag_row(session, repo_id, tag_name, commit_hash)
 
 
 def _sync_parents(session: Session, commits: list) -> None:
-    """コミットの親子関係をキャッシュに書き込む。
-
-    Args:
-        session: DB セッション。
-        commits: pygit2.Commit のリスト。
-    """
+    """コミットの親子関係をキャッシュに書き込む。"""
     for c in commits:
         for pos, parent_id in enumerate(c.parent_ids):
             commit_repo.insert_parent_row(session, str(c.id), str(parent_id), pos)
+
+
+def _sync_commit_rows(session: Session, repo_id: str, commits: list) -> None:
+    """コミット行を全件挿入する。"""
+    # 親ハッシュへの外部キー制約を満たすため、コミットを先に全件挿入する。
+    for c in commits:
+        message_line = c.message.split("\n", 1)[0]
+        cid = str(c.id)
+        commit_repo.insert_commit_row(
+            session,
+            repo_id,
+            cid,
+            cid[:7],
+            message_line,
+            c.author.name,
+            c.author.email,
+            int(c.commit_time),
+        )
 
 
 def _sync_commits_and_branches(
@@ -134,20 +141,7 @@ def _sync_commits_and_branches(
     """
     commits = walk_commits_from_branches(repo)
     _logger.info("同期実行: repo_id=%s commits=%d", repo_id, len(commits))
-    # 親ハッシュへの外部キー制約を満たすため、コミットを先に全件挿入する。
-    for c in commits:
-        message_line = c.message.split("\n", 1)[0]
-        cid = str(c.id)
-        commit_repo.insert_commit_row(
-            session,
-            repo_id,
-            cid,
-            cid[:7],
-            message_line,
-            c.author.name,
-            c.author.email,
-            int(c.commit_time),
-        )
+    _sync_commit_rows(session, repo_id, commits)
     _sync_parents(session, commits)
     _sync_branches(session, repo_id, repo)
     _sync_tags(session, repo_id, repo)
