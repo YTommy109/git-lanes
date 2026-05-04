@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from backend.models import Branch, Commit
-from backend.services.fork_point import ForkData, compute_fork_data, sort_branches_by_fork_data
+from backend.services.fork_point import ForkData, compute_fork_data
+from backend.services.fork_point_sort import sort_branches_by_fork_data
 
 
 def _c(h: str, at: int) -> Commit:
