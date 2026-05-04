@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from sqlalchemy import delete
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from backend.models import Branch, Commit, CommitParent, Repository, Tag
 
@@ -92,9 +92,9 @@ def purge_graph_data(session: Session, repo_id: str) -> None:
     if hashes:
         # commit_hash と parent_hash の両方を削除する。
         # ワークツリー等で同一ハッシュを共有する場合、parent_hash 側の FK 制約に違反するため。
-        session.exec(delete(CommitParent).where(CommitParent.commit_hash.in_(hashes)))  # type: ignore[union-attr,arg-type]  # ty:ignore[unresolved-attribute]
-        session.exec(delete(CommitParent).where(CommitParent.parent_hash.in_(hashes)))  # type: ignore[union-attr,arg-type]  # ty:ignore[unresolved-attribute]
-    session.exec(delete(Tag).where(Tag.repo_id == repo_id))  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
-    session.exec(delete(Branch).where(Branch.repo_id == repo_id))  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
-    session.exec(delete(Commit).where(Commit.repo_id == repo_id))  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
+        session.exec(delete(CommitParent).where(col(CommitParent.commit_hash).in_(hashes)))
+        session.exec(delete(CommitParent).where(col(CommitParent.parent_hash).in_(hashes)))
+    session.exec(delete(Tag).where(col(Tag.repo_id) == repo_id))
+    session.exec(delete(Branch).where(col(Branch.repo_id) == repo_id))
+    session.exec(delete(Commit).where(col(Commit.repo_id) == repo_id))
     session.commit()

@@ -6,11 +6,12 @@ from __future__ import annotations
 import logging
 
 import pygit2
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session
 
 from backend.db import get_session
+from backend.exceptions import CommitNotFoundError, GitOpenError, RepositoryNotFoundError
 from backend.jinja import templates
 from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
 from backend.services import grid_builder, sync_service
@@ -44,11 +45,11 @@ async def graph_page(
     rid = parse_repo_id(repo_id)
     rec = repository_repo.get_repository(session, rid)
     if rec is None:
-        raise HTTPException(status_code=404, detail="リポジトリが見つかりません")
+        raise RepositoryNotFoundError
     try:
         sync_service.sync_repository(session, rid, rec.path)
     except pygit2.GitError as exc:
-        raise HTTPException(status_code=400, detail="Git リポジトリを開けません") from exc
+        raise GitOpenError from exc
     rows = commit_repo.list_all_commits(session, rid)
     parents = commit_repo.parents_by_child(session, [r.hash for r in rows])
     branches = branch_repo.list_branches(session, rid)
@@ -86,7 +87,7 @@ async def commit_detail(
     ch = parse_commit_hash(commit_hash)
     row = commit_repo.get_commit(session, rid, ch)
     if row is None:
-        raise HTTPException(status_code=404, detail="コミットが見つかりません")
+        raise CommitNotFoundError
     tags = tag_repo.get_tags_for_commit(session, rid, ch)
     return templates.TemplateResponse(
         request, "partials/detail.html", {"commit": row, "tags": tags}

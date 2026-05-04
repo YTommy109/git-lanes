@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import func
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from backend.models import Commit, CommitParent
 
@@ -18,7 +18,7 @@ def count_commits(session: Session, repo_id: str) -> int:
     Returns:
         コミット件数。
     """
-    return session.exec(select(func.count(Commit.hash)).where(Commit.repo_id == repo_id)).one()  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
+    return session.exec(select(func.count(col(Commit.hash))).where(Commit.repo_id == repo_id)).one()
 
 
 def list_all_commits(session: Session, repo_id: str) -> list[Commit]:
@@ -33,7 +33,9 @@ def list_all_commits(session: Session, repo_id: str) -> list[Commit]:
     """
     return list(
         session.exec(
-            select(Commit).where(Commit.repo_id == repo_id).order_by(Commit.committed_at.desc())  # type: ignore[union-attr]  # ty:ignore[unresolved-attribute]
+            select(Commit)
+            .where(Commit.repo_id == repo_id)
+            .order_by(col(Commit.committed_at).desc())
         ).all()
     )
 
@@ -103,8 +105,8 @@ def parents_by_child(session: Session, child_hashes: list[str]) -> dict[str, lis
         return {}
     rows = session.exec(
         select(CommitParent)
-        .where(CommitParent.commit_hash.in_(child_hashes))  # type: ignore[union-attr]  # ty:ignore[unresolved-attribute]
-        .order_by(CommitParent.commit_hash, CommitParent.position)  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
+        .where(col(CommitParent.commit_hash).in_(child_hashes))
+        .order_by(col(CommitParent.commit_hash), col(CommitParent.position))
     ).all()
     result: dict[str, list[str]] = {}
     for row in rows:

@@ -9,12 +9,17 @@ from pathlib import Path
 from typing import Annotated
 
 import pygit2
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from backend.db import get_session
+from backend.exceptions import (
+    DirectoryNotFoundError,
+    GitOpenError,
+    RepositoryAlreadyRegisteredError,
+)
 from backend.repositories import repository_repo
 from backend.repositories.git_repo import open_repository
 from backend.services.watch_service import WatchService
@@ -37,11 +42,11 @@ async def register_repository(
     """フォルダパスからリポジトリを登録し、グラフ画面へリダイレクトする。"""
     resolved = Path(path).expanduser().resolve()
     if not resolved.is_dir():
-        raise HTTPException(status_code=400, detail="ディレクトリが存在しません")
+        raise DirectoryNotFoundError
     try:
         open_repository(str(resolved))
     except pygit2.GitError as exc:
-        raise HTTPException(status_code=400, detail="Git リポジトリとして開けません") from exc
+        raise GitOpenError from exc
     repo_id = str(uuid.uuid4())
     existing = repository_repo.get_repository_by_path(session, str(resolved))
     _logger.info("リポジトリ登録: path=%s 既存=%s", resolved, existing is not None)
@@ -53,7 +58,7 @@ async def register_repository(
     try:
         repository_repo.insert_repository(session, repo_id, str(resolved), resolved.name)
     except IntegrityError as exc:
-        raise HTTPException(status_code=409, detail="このパスは既に登録されています") from exc
+        raise RepositoryAlreadyRegisteredError from exc
     if watch_svc is not None:
         watch_svc.watch(repo_id, str(resolved))
     return RedirectResponse(url=f"/repos/{repo_id}/graph", status_code=303)

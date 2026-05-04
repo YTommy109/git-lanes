@@ -7,11 +7,13 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from backend.db import create_db_and_tables, engine
+from backend.exceptions import AppError
 from backend.logging_config import get_log_path, setup_logging
 from backend.repositories import repository_repo
 from backend.routers import api, html, update
@@ -60,6 +62,12 @@ app.include_router(html.router)
 app.include_router(api.router)
 app.include_router(update.router)
 app.include_router(make_router(event_bus))
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """ドメイン例外を HTTP レスポンスに変換する。"""
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 @app.get("/health")

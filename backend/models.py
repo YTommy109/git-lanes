@@ -1,6 +1,6 @@
 """SQLModel テーブル定義。"""
 
-from typing import Optional
+from __future__ import annotations
 
 from sqlalchemy import Column, Index, String
 from sqlmodel import Field, SQLModel
@@ -14,8 +14,8 @@ class Repository(SQLModel, table=True):
     id: str = Field(primary_key=True)
     path: str = Field(sa_column=Column(String, unique=True, nullable=False))
     name: str = Field(sa_column=Column(String, nullable=False))
-    cached_head: Optional[str] = None
-    synced_at: Optional[int] = None
+    cached_head: str | None = None
+    synced_at: int | None = None
 
 
 class Commit(SQLModel, table=True):

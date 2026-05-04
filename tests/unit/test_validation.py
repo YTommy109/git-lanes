@@ -1,8 +1,8 @@
 """validation の単体テスト。"""
 
 import pytest
-from fastapi import HTTPException
 
+from backend.exceptions import CommitNotFoundError, RepositoryNotFoundError
 from backend.validation import parse_commit_hash, parse_repo_id
 
 
@@ -22,9 +22,9 @@ def test_parse_repo_id_rejects_garbage():
     value = "not-a-uuid"
 
     # --- Act & Assert ---
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(RepositoryNotFoundError) as exc:
         parse_repo_id(value)
-    assert exc.value.status_code == 404
+    assert exc.type.status_code == 404
 
 
 def test_parse_commit_hash_normalizes_case():
@@ -43,6 +43,6 @@ def test_parse_commit_hash_rejects_invalid():
     value = "not-a-hash"
 
     # --- Act & Assert ---
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(CommitNotFoundError) as exc:
         parse_commit_hash(value)
-    assert exc.value.status_code == 404
+    assert exc.type.status_code == 404
