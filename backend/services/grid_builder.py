@@ -10,12 +10,12 @@ from backend.services.fork_point import ForkData, compute_fork_data
 from backend.services.fork_point_sort import sort_branches_by_fork_data
 from backend.services.graph_models import GraphResult
 from backend.services.grid_builder_helpers import init_branch_maps
-from backend.services.grid_builder_layout import build_dummy_nodes, build_edge_graph
-from backend.services.grid_builder_utils import (
-    CommitState,
+from backend.services.grid_builder_layout import (
     _build_branch_labels,
-    _process_one_commit,
+    build_dummy_nodes,
+    build_edge_graph,
 )
+from backend.services.grid_builder_utils import CommitState, _process_one_commit
 from backend.services.grid_models import GridLayout, GridNode
 
 

@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 from backend.models import Branch
-from backend.services.grid_models import GRID_COLORS, GridLayout, GridNode
+from backend.services.grid_builder_helpers import _e, add_joint_edges
+from backend.services.grid_models import GRID_COLORS, GridBranchLabel, GridLayout, GridNode
 
 
 def _add_dummy_edges_for_branch(
@@ -15,8 +16,6 @@ def _add_dummy_edges_for_branch(
     dc: str,
 ) -> None:
     """ダミーノードから tip コミットへのエッジを生成する。"""
-    from backend.services.grid_builder_helpers import _e
-
     if dl == tl:
         layout.edges.append(_e(dl, 0, tl, tr, dc, True))
         return
@@ -67,8 +66,6 @@ def build_edge_graph(
         parents: コミットハッシュから親ハッシュリストへのマップ。
         placed: 配置済みコミットのマップ。
     """
-    from backend.services.grid_builder_helpers import _e, add_joint_edges
-
     for node in layout.nodes:
         if node.kind != "commit":
             continue
@@ -82,3 +79,44 @@ def build_edge_graph(
                 )
             else:
                 add_joint_edges(layout, node, p_node)
+
+
+def _build_branch_labels(
+    branches: list[Branch],
+    tip_lane: dict[str, int],
+    color_map: dict[str, str],
+    placed: dict[str, GridNode],
+    tag_map: dict[str, list[str]],
+) -> list[GridBranchLabel]:
+    """ブランチラベルリストを構築する。
+
+    Args:
+        branches: ブランチのリスト。
+        tip_lane: ブランチ tip からレーン番号へのマップ。
+        color_map: ブランチ名から色へのマップ。
+        placed: 配置済みコミットのマップ。
+        tag_map: コミットハッシュからタグ名リストへのマップ。
+
+    Returns:
+        GridBranchLabel のリスト。
+    """
+    lane_to_names: dict[int, list[str]] = {}
+    lane_to_color: dict[int, str] = {}
+    for b in branches:
+        tip_h = b.tip_hash
+        # tip が row=0 にある（ヘッダー行に直接表示）→ 配置済みレーンを使用。
+        # tip が row>0 にある（ダミーノードで代替）→ ダミーの位置である指定レーンを使用。
+        if tip_h in placed and placed[tip_h].row == 0:
+            target_lane = placed[tip_h].lane
+        else:
+            target_lane = tip_lane.get(tip_h)
+        if target_lane is None:
+            continue
+        lane_to_names.setdefault(target_lane, []).append(b.name)
+        lane_to_color[target_lane] = color_map.get(b.name, GRID_COLORS[0])
+        for tag_name in tag_map.get(tip_h, []):
+            lane_to_names[target_lane].append(f"[{tag_name}]")
+    return [
+        GridBranchLabel(lane=ln, names=names, color=lane_to_color[ln])
+        for ln, names in lane_to_names.items()
+    ]

@@ -5,8 +5,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from backend.models import Branch
-from backend.services.grid_models import GRID_COLORS, GridBranchLabel, GridLayout, GridNode
+from backend.services.grid_builder_helpers import (
+    assign_commit_lane,
+    find_matched_idx,
+    next_available_lane,
+)
+from backend.services.grid_models import GRID_COLORS, GridLayout, GridNode
 
 
 def _reserve_secondary_parents(
@@ -18,8 +22,6 @@ def _reserve_secondary_parents(
     color_idx: int,
 ) -> tuple[list[tuple[int, str, str, str]], set[int], int]:
     """第2親以降のレーンを予約して active_lanes に追加する。"""
-    from backend.services.grid_builder_helpers import next_available_lane
-
     for p2_hash in commit_parents[1:]:
         if p2_hash in placed:
             continue
@@ -52,8 +54,6 @@ def _resolve_lane(
     tip_color: dict[str, str],
 ) -> tuple[int, str, int | None]:
     """レーン・色・matched_idx を決定し state.color_idx を更新する。"""
-    from backend.services.grid_builder_helpers import assign_commit_lane, find_matched_idx
-
     matched_idx = find_matched_idx(commit_hash, state.active_lanes)
     lane, color, state.color_idx = assign_commit_lane(
         commit_hash,
@@ -67,6 +67,39 @@ def _resolve_lane(
     return lane, color, matched_idx
 
 
+def update_active_lanes(
+    commit_hash: str,
+    commit_parents: list[str],
+    matched_idx: int | None,
+    matched_lane: int,
+    matched_color: str,
+    active_lanes: list[tuple[int, str, str, str]],
+    used_lane_nums: set[int],
+    color_idx: int,
+    placed: dict[str, GridNode],
+) -> tuple[list[tuple[int, str, str, str]], set[int], int]:
+    """active_lanes を更新し、第2親以降のレーンを予約する。"""
+    p1 = commit_parents[0] if commit_parents else None
+    new_active: list[tuple[int, str, str, str]] = []
+    freed: set[int] = set()
+    matched_consumed = False
+    for i, (ln, bh, eh, color) in enumerate(active_lanes):
+        if i == matched_idx:
+            matched_consumed = True
+            if p1:
+                new_active.append((matched_lane, commit_hash, p1, matched_color))
+        elif eh == commit_hash:
+            # 同コミットを期待していた合流レーンを解放して再利用可能にする
+            freed.add(ln)
+        else:
+            new_active.append((ln, bh, eh, color))
+    if not matched_consumed and p1:
+        new_active.append((matched_lane, commit_hash, p1, matched_color))
+    return _reserve_secondary_parents(
+        commit_hash, commit_parents, placed, used_lane_nums - freed, new_active, color_idx
+    )
+
+
 def _process_one_commit(
     commit_hash: str,
     row: int,
@@ -77,8 +110,6 @@ def _process_one_commit(
     layout: GridLayout,
 ) -> None:
     """1コミットをグリッドに配置し state を更新する。"""
-    from backend.services.grid_builder_helpers import update_active_lanes
-
     lane, color, matched_idx = _resolve_lane(commit_hash, state, tip_lane, tip_color)
     state.used_lane_nums.add(lane)
     state.active_lanes, state.used_lane_nums, state.color_idx = update_active_lanes(
@@ -95,44 +126,3 @@ def _process_one_commit(
     node = GridNode(hash=commit_hash, lane=lane, row=row, kind="commit", color=color)
     state.placed[commit_hash] = node
     layout.nodes.append(node)
-
-
-def _build_branch_labels(
-    branches: list[Branch],
-    tip_lane: dict[str, int],
-    color_map: dict[str, str],
-    placed: dict[str, GridNode],
-    tag_map: dict[str, list[str]],
-) -> list[GridBranchLabel]:
-    """ブランチラベルリストを構築する。
-
-    Args:
-        branches: ブランチのリスト。
-        tip_lane: ブランチ tip からレーン番号へのマップ。
-        color_map: ブランチ名から色へのマップ。
-        placed: 配置済みコミットのマップ。
-        tag_map: コミットハッシュからタグ名リストへのマップ。
-
-    Returns:
-        GridBranchLabel のリスト。
-    """
-    lane_to_names: dict[int, list[str]] = {}
-    lane_to_color: dict[int, str] = {}
-    for b in branches:
-        tip_h = b.tip_hash
-        # tip が row=0 にある（ヘッダー行に直接表示）→ 配置済みレーンを使用。
-        # tip が row>0 にある（ダミーノードで代替）→ ダミーの位置である指定レーンを使用。
-        if tip_h in placed and placed[tip_h].row == 0:
-            target_lane = placed[tip_h].lane
-        else:
-            target_lane = tip_lane.get(tip_h)
-        if target_lane is None:
-            continue
-        lane_to_names.setdefault(target_lane, []).append(b.name)
-        lane_to_color[target_lane] = color_map.get(b.name, GRID_COLORS[0])
-        for tag_name in tag_map.get(tip_h, []):
-            lane_to_names[target_lane].append(f"[{tag_name}]")
-    return [
-        GridBranchLabel(lane=ln, names=names, color=lane_to_color[ln])
-        for ln, names in lane_to_names.items()
-    ]

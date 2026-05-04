@@ -107,41 +107,6 @@ def assign_commit_lane(
     return ln, GRID_COLORS[color_idx % len(GRID_COLORS)], color_idx + 1
 
 
-def update_active_lanes(
-    commit_hash: str,
-    commit_parents: list[str],
-    matched_idx: int | None,
-    matched_lane: int,
-    matched_color: str,
-    active_lanes: list[tuple[int, str, str, str]],
-    used_lane_nums: set[int],
-    color_idx: int,
-    placed: dict[str, GridNode],
-) -> tuple[list[tuple[int, str, str, str]], set[int], int]:
-    """active_lanes を更新し、第2親以降のレーンを予約する。"""
-    from backend.services.grid_builder_utils import _reserve_secondary_parents
-
-    p1 = commit_parents[0] if commit_parents else None
-    new_active: list[tuple[int, str, str, str]] = []
-    freed: set[int] = set()
-    matched_consumed = False
-    for i, (ln, bh, eh, color) in enumerate(active_lanes):
-        if i == matched_idx:
-            matched_consumed = True
-            if p1:
-                new_active.append((matched_lane, commit_hash, p1, matched_color))
-        elif eh == commit_hash:
-            # 同コミットを期待していた合流レーンを解放して再利用可能にする
-            freed.add(ln)
-        else:
-            new_active.append((ln, bh, eh, color))
-    if not matched_consumed and p1:
-        new_active.append((matched_lane, commit_hash, p1, matched_color))
-    return _reserve_secondary_parents(
-        commit_hash, commit_parents, placed, used_lane_nums - freed, new_active, color_idx
-    )
-
-
 def add_joint_edges(layout: GridLayout, from_node: GridNode, to_node: GridNode) -> None:
     """複数行のエッジをジョイントで分割する。"""
     c, cr, fc = from_node.lane, from_node.row, from_node.color
