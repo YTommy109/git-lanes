@@ -40,10 +40,10 @@ typecheck   = "ty check"
 migrate     = "atlas schema apply --url 'sqlite://${DB_PATH:-dev.db}' --to 'file://schema.hcl' --dev-url 'sqlite://dev?mode=memory'"
 app         = "python -m backend.app"
 build       = "pyinstaller -y git_lanes.spec"
-"test:install" = "touch /tmp/git-lanes-test.dmg && GL_MOCK_FROZEN=1 GL_MOCK_DMG=/tmp/git-lanes-test.dmg uv run python -c 'from backend.services.update_installer import install_update; print(install_update())'"
-"bump:patch" = "bash -c '[ \"$(git branch --show-current)\" = \"main\" ] || { echo \"Error: bump は main ブランチでのみ実行できます\"; exit 1; } && bump-my-version bump patch && git push && git push --tags'"
-"bump:minor" = "bash -c '[ \"$(git branch --show-current)\" = \"main\" ] || { echo \"Error: bump は main ブランチでのみ実行できます\"; exit 1; } && bump-my-version bump minor && git push && git push --tags'"
-"bump:major" = "bash -c '[ \"$(git branch --show-current)\" = \"main\" ] || { echo \"Error: bump は main ブランチでのみ実行できます\"; exit 1; } && bump-my-version bump major && git push && git push --tags'"
+"test:install" = "bash scripts/test-install.sh"
+"bump:patch"   = "bash scripts/bump.sh patch"
+"bump:minor"   = "bash scripts/bump.sh minor"
+"bump:major"   = "bash scripts/bump.sh major"
 
 [tool.ruff]
 line-length = 100
