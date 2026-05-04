@@ -1,19 +1,19 @@
+# backend/services/update_installer.py
 """アプリ内自動アップデートのインストール処理。"""
 
 from __future__ import annotations
 
 import logging
 import os
-import plistlib
 import subprocess
 import sys
 from pathlib import Path
 from typing import Literal
 
 from backend.services import update_service
+from backend.services.update_mount import mount_dmg
 
 _SCRIPT_PATH = Path("/tmp/git-lanes-updater.sh")
-_MOCK_VOLUME = Path("/tmp/git-lanes-mock-volume")
 _logger = logging.getLogger(__name__)
 
 InstallResult = Literal["ok", "no_dmg", "mount_failed", "no_app", "not_frozen"]
@@ -28,7 +28,6 @@ def _get_app_path() -> Path | None:
         .app バンドルの Path。開発環境かつ GL_MOCK_FROZEN 未設定なら None。
     """
     if os.environ.get("GL_MOCK_FROZEN"):
-        # ローカルテスト用: /tmp/git-lanes-mock.app を返す
         mock_app = Path("/tmp/git-lanes-mock.app")
         mock_app.mkdir(parents=True, exist_ok=True)
         return mock_app
@@ -36,71 +35,6 @@ def _get_app_path() -> Path | None:
         return None
     # sys.executable = /Applications/Git Lanes.app/Contents/MacOS/Git Lanes
     return Path(sys.executable).parent.parent.parent
-
-
-def _mock_mount() -> Path:
-    """ローカルテスト用の仮マウントポイントを作成して返す。
-
-    Returns:
-        git-lanes-mock.app を含む仮マウントポイントの Path。
-    """
-    _MOCK_VOLUME.mkdir(parents=True, exist_ok=True)
-    # cp -R はソース名のままコピーするため、_get_app_path() の名前に合わせる
-    macos = _MOCK_VOLUME / "git-lanes-mock.app" / "Contents" / "MacOS"
-    macos.mkdir(parents=True, exist_ok=True)
-    exe = macos / "git-lanes-mock"
-    if not exe.exists():
-        exe.write_text("#!/bin/bash\n")
-        exe.chmod(0o755)
-    return _MOCK_VOLUME
-
-
-def _parse_mount_point(stdout: bytes) -> Path | None:
-    """hdiutil plist 出力からマウントポイントを取得する。
-
-    Args:
-        stdout: hdiutil attach の標準出力（plist 形式）。
-
-    Returns:
-        マウントポイントの Path。見つからない場合は None。
-    """
-    try:
-        plist = plistlib.loads(stdout)
-    except Exception:
-        return None
-    for entity in plist.get("system-entities", []):
-        if "mount-point" in entity:
-            return Path(entity["mount-point"])
-    return None
-
-
-def _mount_dmg(dmg_path: str) -> Path | None:
-    """DMG をマウントしてマウントポイントを返す。
-
-    GL_MOCK_DMG 設定時はモックを返す。quarantine 属性を事前に除去する。
-
-    Args:
-        dmg_path: DMG ファイルのパス。
-
-    Returns:
-        マウントポイントの Path。失敗時は None。
-    """
-    if os.environ.get("GL_MOCK_DMG"):
-        return _mock_mount()
-    subprocess.run(["xattr", "-d", "com.apple.quarantine", dmg_path], capture_output=True)
-    try:
-        result = subprocess.run(
-            ["hdiutil", "attach", dmg_path, "-nobrowse", "-plist"],
-            capture_output=True,
-            check=True,
-            timeout=60,
-        )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-        _logger.warning("hdiutil attach 失敗: %s", e)
-        if hasattr(e, "stderr") and e.stderr:
-            _logger.warning("stderr: %s", e.stderr.decode(errors="replace"))
-        return None
-    return _parse_mount_point(result.stdout)
 
 
 def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) -> Path:
@@ -137,10 +71,10 @@ def install_update() -> InstallResult:
     _logger.debug("dmg_path=%s exists=%s", dmg_path, dmg_path and Path(dmg_path).exists())
     if not dmg_path or not Path(dmg_path).exists():
         return "no_dmg"
-    _logger.info("_mount_dmg 開始: %s", dmg_path)
-    mount_point = _mount_dmg(dmg_path)
+    _logger.info("mount_dmg 開始: %s", dmg_path)
+    mount_point = mount_dmg(dmg_path)
     if mount_point is None:
-        _logger.warning("_mount_dmg 失敗")
+        _logger.warning("mount_dmg 失敗")
         return "mount_failed"
     _logger.info("マウントポイント: %s", mount_point)
     apps = list(mount_point.glob("*.app"))
