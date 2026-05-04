@@ -82,6 +82,17 @@ def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     _sync_commits_and_branches(session, repo_id, repo, head_hex)
 
 
+def _sync_branches(session: Session, repo_id: str, repo: pygit2.Repository) -> None:
+    """ローカル・リモートブランチをキャッシュに書き込む。"""
+    try:
+        for branch_name, tip in iter_local_branches(repo):
+            branch_repo.insert_branch_row(session, repo_id, branch_name, tip, 0)
+        for branch_name, tip in iter_remote_branches(repo):
+            branch_repo.insert_branch_row(session, repo_id, branch_name, tip, 1)
+    except pygit2.GitError:
+        pass
+
+
 def _sync_tags(session: Session, repo_id: str, repo: pygit2.Repository) -> None:
     """ウォークツリー内のタグをキャッシュに書き込む。
 
@@ -138,13 +149,7 @@ def _sync_commits_and_branches(
             int(c.commit_time),
         )
     _sync_parents(session, commits)
-    try:
-        for branch_name, tip in iter_local_branches(repo):
-            branch_repo.insert_branch_row(session, repo_id, branch_name, tip, 0)
-        for branch_name, tip in iter_remote_branches(repo):
-            branch_repo.insert_branch_row(session, repo_id, branch_name, tip, 1)
-    except pygit2.GitError:
-        pass
+    _sync_branches(session, repo_id, repo)
     _sync_tags(session, repo_id, repo)
     session.commit()
     repository_repo.update_sync_state(session, repo_id, head_hex)

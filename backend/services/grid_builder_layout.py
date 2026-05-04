@@ -88,18 +88,7 @@ def _build_branch_labels(
     placed: dict[str, GridNode],
     tag_map: dict[str, list[str]],
 ) -> list[GridBranchLabel]:
-    """ブランチラベルリストを構築する。
-
-    Args:
-        branches: ブランチのリスト。
-        tip_lane: ブランチ tip からレーン番号へのマップ。
-        color_map: ブランチ名から色へのマップ。
-        placed: 配置済みコミットのマップ。
-        tag_map: コミットハッシュからタグ名リストへのマップ。
-
-    Returns:
-        GridBranchLabel のリスト。
-    """
+    """ブランチラベルリストを構築する。"""
     lane_to_names: dict[int, list[str]] = {}
     lane_to_color: dict[int, str] = {}
     for b in branches:
