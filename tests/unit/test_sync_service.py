@@ -6,6 +6,7 @@ import pygit2
 
 from backend.repositories import cache_repo
 from backend.services import sync_service
+from backend.services.sync_service import _should_resync
 from tests.support.git_repo_fixture import make_two_commit_repo
 
 
@@ -109,6 +110,63 @@ def test_sync_repository_既存コミット先端の新ブランチが同期さ�
     # --- Assert ---
     branches_after = {b.name for b in cache_repo.list_branches(session, repo_id)}
     assert "hogehoge" in branches_after
+
+
+def test_sync_repository_削除されたブランチがDBから消える(session, tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo_id = str(uuid.uuid4())
+    cache_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+
+    # ブランチを作成して初回同期する
+    repo_pygit = pygit2.Repository(str(repo_path))
+    tip_commit = repo_pygit.head.peel(pygit2.Commit)
+    repo_pygit.create_branch("hogehoge", tip_commit, False)
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+    assert "hogehoge" in {b.name for b in cache_repo.list_branches(session, repo_id)}
+
+    # ブランチを削除する（HEAD は変わらない）
+    repo_pygit.branches.local.get("hogehoge").delete()  # type: ignore[union-attr]
+
+    # --- Act ---
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+
+    # --- Assert ---
+    branches_after = {b.name for b in cache_repo.list_branches(session, repo_id)}
+    assert "hogehoge" not in branches_after
+
+
+def test_should_resync_HEAD変化なしでFalseを返す(session, tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo_id = str(uuid.uuid4())
+    cache_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+    head_hex = "a" * 40
+    cache_repo.update_sync_state(session, repo_id, head_hex)
+    cache_repo.insert_commit_row(session, repo_id, head_hex, head_hex[:7], "msg", "a", "a@a", 1000)
+
+    # --- Act ---
+    result = _should_resync(session, repo_id, head_hex)
+
+    # --- Assert ---
+    assert result is False
+
+
+def test_should_resync_HEAD変化でTrueを返す(session, tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo_id = str(uuid.uuid4())
+    cache_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+    old_head = "a" * 40
+    new_head = "b" * 40
+    cache_repo.update_sync_state(session, repo_id, old_head)
+    cache_repo.insert_commit_row(session, repo_id, old_head, old_head[:7], "msg", "a", "a@a", 1000)
+
+    # --- Act ---
+    result = _should_resync(session, repo_id, new_head)
+
+    # --- Assert ---
+    assert result is True
 
 
 def test_sync_repository_ウォーク範囲外のタグはスキップされる(session, tmp_path):

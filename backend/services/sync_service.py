@@ -56,6 +56,16 @@ def _has_missing_branches(session: Session, repo_id: str, repo: pygit2.Repositor
     return any(name not in cached_names for name in all_names)
 
 
+def _has_extra_branches(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
+    """git に存在しないブランチが DB に残っていれば True を返す。
+
+    ブランチ削除を検知する。
+    """
+    cached_names = {b.name for b in cache_repo.list_branches(session, repo_id)}
+    current_names = {*repo.branches.local, *repo.branches.remote}
+    return bool(cached_names - current_names)
+
+
 def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
     """必要ならリポジトリ内容をフル再同期する。
 
@@ -72,6 +82,7 @@ def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:
         _should_resync(session, repo_id, head_hex)
         or _has_missing_tips(session, repo_id, repo)
         or _has_missing_branches(session, repo_id, repo)
+        or _has_extra_branches(session, repo_id, repo)
     )
     if not needs_sync:
         return
