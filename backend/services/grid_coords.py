@@ -85,6 +85,8 @@ def _build_svg_nodes(
             SvgNode(
                 cx=_cx(node.lane),
                 cy=_cy(node.row),
+                lane=node.lane,
+                row=node.row,
                 color=node.color,
                 commit=commit,
                 labels=_build_tag_labels(node.hash, node_type, tag_map),
