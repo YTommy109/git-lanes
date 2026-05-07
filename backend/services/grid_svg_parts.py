@@ -54,7 +54,7 @@ def build_svg_headers(layout: GridLayout) -> list[SvgBranchHeader]:
         has_dummy = label.lane in dummy_lanes
         cx = _cx(label.lane)
         entries = [
-            (float(GRID_ORIGIN_Y - (i + 1) * GRID_SPACING), SvgLabel(text=name, kind="branch"))
+            (float(GRID_ORIGIN_Y - (i + 1) * GRID_SPACING + 10), SvgLabel(text=name, kind="branch"))
             for i, name in enumerate(label.names)
         ]
         result.append(

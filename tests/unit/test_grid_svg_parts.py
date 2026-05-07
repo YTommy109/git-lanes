@@ -5,7 +5,7 @@ from backend.services.grid_models import GridBranchLabel, GridLayout, GridNode
 from backend.services.grid_svg_parts import build_svg_headers
 
 
-def test_1ラベルのとき_label_entriesが1件でcy_72():
+def test_1ラベルのとき_label_entriesが1件でcy_82():
     # --- Arrange ---
     layout = GridLayout(
         nodes=[],
@@ -19,11 +19,11 @@ def test_1ラベルのとき_label_entriesが1件でcy_72():
     assert len(headers) == 1
     assert len(headers[0].label_entries) == 1
     cy, label = headers[0].label_entries[0]
-    assert cy == 72.0
+    assert cy == 82.0
     assert label == SvgLabel(text="main", kind="branch")
 
 
-def test_2ラベルのとき_label_entriesが2件でcy_72_42():
+def test_2ラベルのとき_label_entriesが2件でcy_82_52():
     # --- Arrange ---
     layout = GridLayout(
         nodes=[],
@@ -37,13 +37,13 @@ def test_2ラベルのとき_label_entriesが2件でcy_72_42():
     assert len(headers) == 1
     entries = headers[0].label_entries
     assert len(entries) == 2
-    assert entries[0][0] == 72.0  # インデックス 0 が最下段
-    assert entries[1][0] == 42.0
+    assert entries[0][0] == 82.0  # インデックス 0 が最下段
+    assert entries[1][0] == 52.0
     assert entries[0][1] == SvgLabel(text="main", kind="branch")
     assert entries[1][1] == SvgLabel(text="origin/main", kind="branch")
 
 
-def test_3ラベルのとき_label_entriesが3件でcy_72_42_12():
+def test_3ラベルのとき_label_entriesが3件でcy_82_52_22():
     # --- Arrange ---
     layout = GridLayout(
         nodes=[],
@@ -58,9 +58,9 @@ def test_3ラベルのとき_label_entriesが3件でcy_72_42_12():
     # --- Assert ---
     entries = headers[0].label_entries
     assert len(entries) == 3
-    assert entries[0][0] == 72.0
-    assert entries[1][0] == 42.0
-    assert entries[2][0] == 12.0
+    assert entries[0][0] == 82.0
+    assert entries[1][0] == 52.0
+    assert entries[2][0] == 22.0
     assert entries[0][1] == SvgLabel(text="main", kind="branch")
     assert entries[1][1] == SvgLabel(text="origin/main", kind="branch")
     assert entries[2][1] == SvgLabel(text="HEAD", kind="branch")
