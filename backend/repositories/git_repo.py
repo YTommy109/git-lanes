@@ -25,11 +25,13 @@ def open_repository(repo_path: str) -> pygit2.Repository:
 
 
 def _collect_branch_tips(
-    branches: pygit2.repository.Branches,
+    branches: pygit2.repository.Branches, exclude: frozenset[str] = frozenset()
 ) -> list[pygit2.Oid]:
     """ブランチコレクションから先端 Oid リストを返す。"""
     tips = []
     for name in branches:
+        if name in exclude:
+            continue
         branch = branches.get(name)
         if branch is not None:
             tips.append(branch.peel(pygit2.Commit).id)
@@ -39,7 +41,7 @@ def _collect_branch_tips(
 def walk_commits_from_branches(repo: pygit2.Repository) -> list[pygit2.Commit]:
     """全ブランチ（ローカル・リモート）の先端からトポロジカル順にコミットを列挙する。
 
-    HEAD から到達できないブランチのコミットも含む。
+    ワークツリーでチェックアウト中のブランチは除外する。
     空リポジトリまたはブランチが存在しない場合は空リストを返す。
 
     Args:
@@ -48,7 +50,9 @@ def walk_commits_from_branches(repo: pygit2.Repository) -> list[pygit2.Commit]:
     Returns:
         ``GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME`` で走査した一覧。
     """
-    tips = _collect_branch_tips(repo.branches.local) + _collect_branch_tips(repo.branches.remote)
+    wt = _worktree_head_branch_names(repo)
+    tips = _collect_branch_tips(repo.branches.local, wt)
+    tips += _collect_branch_tips(repo.branches.remote)
     if not tips:
         return []
     sort = SortMode.TOPOLOGICAL | SortMode.TIME

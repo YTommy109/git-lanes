@@ -1,5 +1,7 @@
 """git_repo ヘルパーの単体テスト。"""
 
+import time
+
 import pygit2
 
 from backend.repositories.git_repo import (
@@ -111,6 +113,33 @@ def test_iter_tags_タグなしは空を返す(tmp_path):
 
     # --- Assert ---
     assert result == []
+
+
+def test_walk_commits_from_branches_ワークツリーブランチのコミットを除外する(tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo = pygit2.Repository(str(repo_path))
+    # ワークツリーブランチ "wt-branch" を main 先端から作成し、固有コミットを追加
+    main_tip = repo.branches.local.get("main").peel(pygit2.Commit)
+    repo.create_branch("wt-branch", main_tip, False)
+    sig = pygit2.Signature("テスト", "t@example.com", int(time.time()), 0)
+    repo.index.read()
+    (repo_path / "wt.txt").write_text("wt\n", encoding="utf-8")
+    repo.index.add("wt.txt")
+    repo.index.write()
+    tree = repo.index.write_tree()
+    wt_oid = repo.create_commit("refs/heads/wt-branch", sig, sig, "wt commit", tree, [main_tip.id])
+    wt_dir = repo_path / ".git" / "worktrees" / "my-wt"
+    wt_dir.mkdir(parents=True)
+    (wt_dir / "HEAD").write_text("ref: refs/heads/wt-branch\n")
+
+    # --- Act ---
+    commits = walk_commits_from_branches(repo)
+
+    # --- Assert ---
+    hashes = {str(c.id) for c in commits}
+    assert str(wt_oid) not in hashes  # ワークツリー固有コミットは除外される
+    assert len(commits) == 2  # main の 2 コミットのみ
 
 
 def test_iter_local_branches_ワークツリーブランチを除外する(tmp_path):
