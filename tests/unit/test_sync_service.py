@@ -169,6 +169,35 @@ def test_should_resync_HEAD変化でTrueを返す(session, tmp_path):
     assert result is True
 
 
+def test_sync_repository_DBの古いワークツリーブランチが次回同期で削除される(session, tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo_id = str(uuid.uuid4())
+    repository_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+    repo_pygit = pygit2.Repository(str(repo_path))
+    main_tip = repo_pygit.branches.local.get("main").peel(pygit2.Commit)
+    repo_pygit.create_branch("wt-branch", main_tip, False)
+    # ワークツリー HEAD ファイルを手動作成してワークツリーをシミュレート
+    wt_dir = repo_path / ".git" / "worktrees" / "my-wt"
+    wt_dir.mkdir(parents=True)
+    (wt_dir / "HEAD").write_text("ref: refs/heads/wt-branch\n")
+    # 初回同期（wt-branch は除外される）
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+    # 旧コードで同期済みの状態を再現: wt-branch を DB に手動挿入する
+    branch_repo.insert_branch_row(session, repo_id, "wt-branch", str(main_tip.id), 0)
+    session.commit()
+    assert "wt-branch" in {b.name for b in branch_repo.list_branches(session, repo_id)}
+
+    # --- Act ---
+    # HEAD は変わっていないが DB に不要なワークツリーブランチがある → 再同期されるべき
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+
+    # --- Assert ---
+    branches_after = {b.name for b in branch_repo.list_branches(session, repo_id)}
+    assert "wt-branch" not in branches_after
+    assert "main" in branches_after
+
+
 def test_sync_repository_ウォーク範囲外のタグはスキップされる(session, tmp_path):
     # --- Arrange ---
     # タグ付きリポジトリを作り、ブランチに属さない孤立コミットにもタグを付ける
