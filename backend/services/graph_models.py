@@ -39,6 +39,8 @@ class SvgNode:
 
     cx: float
     cy: float
+    lane: int
+    row: int
     color: str
     commit: Commit
     labels: list[SvgLabel]
