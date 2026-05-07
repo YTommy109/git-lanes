@@ -3,6 +3,7 @@
 import pygit2
 
 from backend.repositories.git_repo import (
+    iter_local_branches,
     iter_remote_branches,
     iter_tags,
     walk_commits_from_branches,
@@ -110,3 +111,23 @@ def test_iter_tags_タグなしは空を返す(tmp_path):
 
     # --- Assert ---
     assert result == []
+
+
+def test_iter_local_branches_ワークツリーブランチを除外する(tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo = pygit2.Repository(str(repo_path))
+    # ワークツリー用ブランチ "wt-branch" を作成
+    main_tip = repo.branches.local.get("main").peel(pygit2.Commit)
+    repo.create_branch("wt-branch", main_tip, False)
+    # .git/worktrees/<name>/HEAD を手動作成してワークツリーをシミュレート
+    wt_dir = repo_path / ".git" / "worktrees" / "my-wt"
+    wt_dir.mkdir(parents=True)
+    (wt_dir / "HEAD").write_text("ref: refs/heads/wt-branch\n")
+
+    # --- Act ---
+    result = dict(iter_local_branches(repo))
+
+    # --- Assert ---
+    assert "main" in result
+    assert "wt-branch" not in result
