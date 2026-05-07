@@ -73,9 +73,10 @@ def test_2ブランチ単純分岐でforkが分岐点コミット():
     assert result["feature"].bottom_committed_at == 25
 
 
-def test_自分のtipが他のブランチ親の場合はNoneになる():
+def test_自分のtipが他のブランチ親の場合はtip親をフォールバック使用():
     # --- Arrange ---
     # main tip=C、feat-2 は C から分岐 → C の reach が {C, E} となり main に専有コミットなし
+    # フォールバック: main の tip(C) の親 B をフォークポイントとして使用する
     commits = [
         _c("E", at=45),
         _c("C", at=30),
@@ -96,9 +97,32 @@ def test_自分のtipが他のブランチ親の場合はNoneになる():
     result = compute_fork_data(commits, parents, branches)
 
     # --- Assert ---
-    assert result["main"].fork_committed_at is None  # trunk → 最右
+    assert result["main"].fork_committed_at == 10  # フォールバック: parent(tip C) = B(at=10)
+    assert result["main"].bottom_committed_at == 30  # tip C の committed_at
     assert result["feat-1"].fork_committed_at == 10  # parent(D) = B(at=10)
     assert result["feat-2"].fork_committed_at == 30  # parent(E) = C(at=30)
+
+
+def test_線形履歴スタックブランチのソート順が先端位置順になる():
+    # --- Arrange ---
+    # A → B(main tip) → C(stack1 tip) → D(stack2 tip) という一直線の履歴
+    commits = [_c("D", at=40), _c("C", at=30), _c("B", at=20), _c("A", at=10)]
+    parents = {"D": ["C"], "C": ["B"], "B": ["A"], "A": []}
+    branches = [_b("main", tip="B"), _b("stack1", tip="C"), _b("stack2", tip="D")]
+
+    # --- Act ---
+    result = compute_fork_data(commits, parents, branches)
+
+    # --- Assert ---
+    # stack2 は排他コミット D あり → fork = parent(D) = C(at=30)
+    assert result["stack2"].fork_committed_at == 30
+    # stack1 は排他コミットなし → フォールバック: tip C の親 B(at=20)
+    assert result["stack1"].fork_committed_at == 20
+    # main は排他コミットなし → フォールバック: tip B の親 A(at=10)
+    assert result["main"].fork_committed_at == 10
+    # ソート: stack2(30) > stack1(20) > main(10) → 左から stack2, stack1, main
+    sorted_branches = sort_branches_by_fork_data(branches, result)
+    assert [b.name for b in sorted_branches] == ["stack2", "stack1", "main"]
 
 
 def test_同一forkpointはbottom_committed_atが設定される():

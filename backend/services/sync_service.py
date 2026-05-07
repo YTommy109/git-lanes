@@ -50,12 +50,11 @@ def _has_change_to_sync(session: Session, repo_id: str, repo: pygit2.Repository)
     Returns:
         再同期が必要なら True。
     """
-    branches = [*iter_local_branches(repo), *iter_remote_branches(repo)]
-    for _, tip in branches:
+    for _, tip in (*iter_local_branches(repo), *iter_remote_branches(repo)):
         if commit_repo.get_commit(session, repo_id, tip) is None:
             return True
     cached = {b.name for b in branch_repo.list_branches(session, repo_id)}
-    current = {name for name, _ in branches}
+    current = {*repo.branches.local, *repo.branches.remote}
     return bool(current - cached) or bool(cached - current)
 
 
