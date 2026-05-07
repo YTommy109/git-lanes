@@ -3,6 +3,7 @@
 import pygit2
 
 from backend.repositories.git_repo import (
+    iter_local_branches,
     iter_remote_branches,
     iter_tags,
     walk_commits_from_branches,
@@ -110,3 +111,18 @@ def test_iter_tags_タグなしは空を返す(tmp_path):
 
     # --- Assert ---
     assert result == []
+
+
+def test_iter_local_branches_全ブランチを返す(tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo = pygit2.Repository(str(repo_path))
+    main_tip = repo.branches.local.get("main").peel(pygit2.Commit)
+    repo.create_branch("feature", main_tip, False)
+
+    # --- Act ---
+    result = dict(iter_local_branches(repo))
+
+    # --- Assert ---
+    assert "main" in result
+    assert "feature" in result

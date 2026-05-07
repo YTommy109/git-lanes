@@ -91,11 +91,15 @@ def _derive_fork_data(
     commit_by_hash: dict[str, Commit],
     parents: dict[str, list[str]],
 ) -> ForkData:
-    """bottom_excl からフォークポイントデータを導出する。"""
-    bottom_hash = bottom_excl.get(branch.name)
-    if bottom_hash is None:
+    """bottom_excl からフォークポイントデータを導出する。
+
+    排他コミットがない場合（線形履歴・後続ブランチによる上書きなど）は
+    ブランチ先端コミットの親をフォークポイントとして代用する。
+    """
+    bottom_hash = bottom_excl.get(branch.name) or branch.tip_hash
+    bottom_commit = commit_by_hash.get(bottom_hash)
+    if bottom_commit is None:
         return ForkData(fork_hash=None, fork_committed_at=None, bottom_committed_at=None)
-    bottom_commit = commit_by_hash[bottom_hash]
     bottom_at = bottom_commit.committed_at
     parent_list = parents.get(bottom_hash, [])
     if not parent_list:
