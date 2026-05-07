@@ -39,9 +39,13 @@ def init_branch_maps(
     color_idx = 0
     for b in branches:
         if b.name not in branch_lane:
-            branch_lane[b.name] = lane_num
+            if b.tip_hash in tip_lane:
+                # 同じ tip を持つブランチはレーンを共用し、lane_num を消費しない
+                branch_lane[b.name] = tip_lane[b.tip_hash]
+            else:
+                branch_lane[b.name] = lane_num
+                lane_num += 3
             color_map[b.name] = GRID_COLORS[color_idx % len(GRID_COLORS)]
-            lane_num += 3
             color_idx += 1
         if b.tip_hash not in tip_lane:
             tip_lane[b.tip_hash] = branch_lane[b.name]

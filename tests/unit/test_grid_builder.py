@@ -629,3 +629,34 @@ def test_ケース17_フォークNULLのブランチが右端レーン():
     lane1_labels = next((lb for lb in layout.branch_labels if lb.lane == 1), None)
     assert lane1_labels is not None
     assert "feat" in lane1_labels.names
+
+
+def test_同一tipのリモートブランチがレーンを消費しない():
+    # --- Arrange ---
+    # main と origin/main が同じ tip を持つ 2 ブランチ構成
+    # feat と origin/feat も同一 tip
+    commits = [
+        _c("C", [], at=30),  # feat, origin/feat の tip
+        _c("B", [], at=20),  # main, origin/main の tip
+        _c("A", [], at=10),
+    ]
+    parents = _p(commits, {"C": ["B"], "B": ["A"], "A": []})
+    branches = [
+        _b("feat", "C"),
+        _b("origin/feat", "C"),
+        _b("main", "B"),
+        _b("origin/main", "B"),
+    ]
+
+    # --- Act ---
+    layout = build_layout(commits, parents, branches, tags=[])
+
+    # --- Assert ---
+    # feat と origin/feat は同一 tip → lane=1 に統合（lane_num を 1 回だけ消費）
+    # main と origin/main は同一 tip → lane=4 に統合
+    feat_labels = next((lb for lb in layout.branch_labels if "feat" in lb.names), None)
+    main_labels = next((lb for lb in layout.branch_labels if "main" in lb.names), None)
+    assert feat_labels is not None
+    assert main_labels is not None
+    # 2 ブランチ分のレーン間隔 = 3 レーン（90px）であること
+    assert main_labels.lane - feat_labels.lane == 3
