@@ -25,10 +25,8 @@ class SvgBranchHeader:
     """SVG ヘッダー行に描画するブランチ名ラベル。"""
 
     cx: float
-    cy: float
-    labels: list[SvgLabel]
     color: str
-    display_text: str = ""
+    label_entries: list[tuple[float, SvgLabel]]
     connector_to_x: float | None = None  # 実コミット円の cx（ダミー tip のみ設定）
     connector_to_y: float | None = None  # 実コミット円の cy（ダミー tip のみ設定）
 

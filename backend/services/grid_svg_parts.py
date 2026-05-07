@@ -46,21 +46,22 @@ def build_svg_headers(layout: GridLayout) -> list[SvgBranchHeader]:
         layout: グリッドレイアウト。
 
     Returns:
-        SvgBranchHeader のリスト。
+        SvgBranchHeader のリスト。label_entries のインデックス 0 が最下段。
     """
-    label_y = float(GRID_ORIGIN_Y - GRID_SPACING)
     dummy_lanes = {n.lane for n in layout.nodes if n.kind == "dummy" and n.row == 0}
     result: list[SvgBranchHeader] = []
     for label in layout.branch_labels:
         has_dummy = label.lane in dummy_lanes
         cx = _cx(label.lane)
+        entries = [
+            (float(GRID_ORIGIN_Y - (i + 1) * GRID_SPACING), SvgLabel(text=name, kind="branch"))
+            for i, name in enumerate(label.names)
+        ]
         result.append(
             SvgBranchHeader(
                 cx=cx,
-                cy=label_y,
-                labels=[SvgLabel(text=n, kind="branch") for n in label.names],
                 color=label.color,
-                display_text=", ".join(label.names),
+                label_entries=entries,
                 connector_to_x=cx if has_dummy else None,
                 connector_to_y=float(_cy(0)) if has_dummy else None,
             )
