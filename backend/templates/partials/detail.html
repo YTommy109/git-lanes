@@ -3,7 +3,7 @@
   <p><strong>短縮</strong> {{ commit.short_hash }}</p>
   <p><strong>メッセージ</strong> {{ commit.message }}</p>
   <p><strong>作者</strong> {{ commit.author_name }} &lt;{{ commit.author_email }}&gt;</p>
-  <p><strong>日時（UNIX）</strong> {{ commit.committed_at }}</p>
+  <p><strong>日時</strong> {{ commit.committed_at | format_unix_timestamp }}</p>
   {% if tags %}
   <p><strong>タグ</strong> {{ tags | join(", ") }}</p>
   {% endif %}
