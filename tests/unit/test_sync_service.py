@@ -136,6 +136,30 @@ def test_sync_repository_削除されたブランチがDBから消える(session
     assert "hogehoge" not in branches_after
 
 
+def test_sync_repository_削除されたリモートブランチがDBから消える(session, tmp_path):
+    # --- Arrange ---
+    repo_path = make_two_commit_repo(tmp_path / "repo")
+    repo_id = str(uuid.uuid4())
+    repository_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+
+    # リモートトラッキングブランチを作成して初回同期する
+    repo_pygit = pygit2.Repository(str(repo_path))
+    tip_oid = repo_pygit.head.peel(pygit2.Commit).id
+    repo_pygit.create_reference("refs/remotes/origin/feat/ghost", tip_oid, False)
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+    assert "origin/feat/ghost" in {b.name for b in branch_repo.list_branches(session, repo_id)}
+
+    # git fetch --prune 相当：リモートトラッキング ref を削除する（HEAD は変わらない）
+    repo_pygit.references.delete("refs/remotes/origin/feat/ghost")
+
+    # --- Act ---
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+
+    # --- Assert ---
+    branches_after = {b.name for b in branch_repo.list_branches(session, repo_id)}
+    assert "origin/feat/ghost" not in branches_after
+
+
 def test_should_resync_HEAD変化なしでFalseを返す(session, tmp_path):
     # --- Arrange ---
     repo_path = make_two_commit_repo(tmp_path / "repo")
