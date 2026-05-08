@@ -23,7 +23,7 @@
 - その真下にコミットノードを表示する
 
 <svg width="200" height="90" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
 </svg>
 
@@ -41,7 +41,7 @@
 - 新しいコミット（上）と親コミット（下）を縦の直線で結ぶ
 
 <svg width="200" height="130" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
   <circle cx="50" cy="102" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
@@ -58,12 +58,12 @@
 
 **期待する表示**
 
-- ブランチ名ラベルを横に並べて表示する
+- ブランチ名ラベルを縦積みで表示する（`develop` が上段、`main` が下段）
 - コミットノードは 1 つ
 
-<svg width="200" height="90" xmlns="http://www.w3.org/2000/svg">
-  <text x="35" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 35, 50)">main</text>
-  <text x="65" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 65, 50)">develop</text>
+<svg width="200" height="90" viewBox="0 -10 200 90" xmlns="http://www.w3.org/2000/svg">
+  <text transform="translate(50, 22) rotate(-45)" font-size="11" fill="#4a9cf6">develop</text>
+  <text transform="translate(50, 52) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
 </svg>
 
@@ -82,8 +82,8 @@
 - レーン 4: b → c を斜めの直線で接続する（レーン 1 のコミット c へ）
 
 <svg width="210" height="130" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
-  <text x="140" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 140, 50)">develop</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
+  <text transform="translate(140, 50) rotate(-45)" font-size="11" fill="#f0883e">develop</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <circle cx="140" cy="72" r="7" fill="#f0883e" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
@@ -108,8 +108,8 @@
 - b1 → a0 を斜めの直線で結ぶ
 
 <svg width="210" height="155" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
-  <text x="140" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 140, 50)">develop</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
+  <text transform="translate(140, 50) rotate(-45)" font-size="11" fill="#f0883e">develop</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <circle cx="140" cy="72" r="3" fill="#f0883e" stroke="#ffffff" stroke-width="1.5"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
@@ -138,8 +138,8 @@
 - ジョイントノードは丸印なし
 
 <svg width="210" height="155" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
-  <text x="140" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 140, 50)">develop</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
+  <text transform="translate(140, 50) rotate(-45)" font-size="11" fill="#f0883e">develop</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <circle cx="140" cy="72" r="3" fill="#f0883e" stroke="#ffffff" stroke-width="1.5"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
@@ -167,8 +167,8 @@
 - b1 → a0 を斜めの直線で結ぶ
 
 <svg width="210" height="130" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
-  <text x="140" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 140, 50)">develop</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
+  <text transform="translate(140, 50) rotate(-45)" font-size="11" fill="#f0883e">develop</text>
   <circle cx="50" cy="72" r="3" fill="#4a9cf6" stroke="#ffffff" stroke-width="1.5"/>
   <circle cx="140" cy="72" r="7" fill="#f0883e" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="72" x2="50" y2="102" stroke="#4a9cf6" stroke-width="2" stroke-dasharray="4,3"/>
@@ -195,7 +195,7 @@
 - b1 から a0 へ斜めの直線（develop 色）
 
 <svg width="150" height="155" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="125" stroke="#4a9cf6" stroke-width="2"/>
   <line x1="50" y1="72" x2="80" y2="102" stroke="#f0883e" stroke-width="2"/>
@@ -222,7 +222,7 @@
 - a1 → a0 を縦の直線（main 色、レーン 2 をまたいで通過）
 
 <svg width="120" height="210" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="185" stroke="#4a9cf6" stroke-width="2"/>
   <line x1="50" y1="72" x2="80" y2="102" stroke="#f0883e" stroke-width="2"/>
@@ -252,8 +252,8 @@
 - レーン 4（x=140）: feat/something01 — ダミーノード → c1（破線）、c1 → a0（斜め）
 
 <svg width="180" height="155" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
-  <text x="140" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 140, 50)">feat/something01</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
+  <text transform="translate(140, 50) rotate(-45)" font-size="11" fill="#3fb950">feat/something01</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <circle cx="140" cy="72" r="3" fill="#3fb950" stroke="#ffffff" stroke-width="1.5"/>
   <line x1="50" y1="79" x2="50" y2="125" stroke="#4a9cf6" stroke-width="2"/>
@@ -287,7 +287,7 @@
 - 斜め線は 1 行以内のルールにより c1 → ジョイントノード（row 2）→ a0 と経由する
 
 <svg width="145" height="185" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
   <line x1="50" y1="72" x2="110" y2="102" stroke="#3fb950" stroke-width="2"/>
@@ -329,7 +329,7 @@
 - ジョイントノード・ダミーノードは不要
 
 <svg width="140" height="220" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="125" stroke="#4a9cf6" stroke-width="2"/>
   <line x1="50" y1="72" x2="80" y2="102" stroke="#f0883e" stroke-width="2"/>
@@ -357,7 +357,7 @@
 - a0 のコミットノードの右側にタグラベル `v1.0` を表示する
 
 <svg width="200" height="130" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
   <circle cx="50" cy="102" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
@@ -379,7 +379,7 @@
 - a0 のコミットノードの右側に `v1.0, bugfix` とカンマ区切りで 1 つのバッジに表示する
 
 <svg width="230" height="130" xmlns="http://www.w3.org/2000/svg">
-  <text x="50" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 50, 50)">main</text>
+  <text transform="translate(50, 50) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
   <circle cx="50" cy="102" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
@@ -398,11 +398,11 @@
 
 **期待する表示**
 
-- ブランチ名ラベル `main` と並べて `[v1.0]` を −45° 回転して表示する
+- ブランチ名ラベルを縦積みで表示する（`[v1.0]` が上段、`main` が下段）
 
-<svg width="200" height="130" xmlns="http://www.w3.org/2000/svg">
-  <text x="35" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 35, 50)">main</text>
-  <text x="65" y="50" text-anchor="start" font-size="12" font-family="monospace" fill="#555" transform="rotate(-45, 65, 50)">[v1.0]</text>
+<svg width="200" height="130" viewBox="0 -10 200 130" xmlns="http://www.w3.org/2000/svg">
+  <text transform="translate(50, 22) rotate(-45)" font-size="11" fill="#4a9cf6">[v1.0]</text>
+  <text transform="translate(50, 52) rotate(-45)" font-size="11" fill="#4a9cf6">main</text>
   <circle cx="50" cy="72" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
   <line x1="50" y1="79" x2="50" y2="95" stroke="#4a9cf6" stroke-width="2"/>
   <circle cx="50" cy="102" r="7" fill="#4a9cf6" stroke="#ffffff" stroke-width="2"/>
