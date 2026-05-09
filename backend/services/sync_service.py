@@ -38,9 +38,10 @@ def _should_resync(session: Session, repo_id: str, head_hex: str | None) -> bool
 
 
 def _has_change_to_sync(session: Session, repo_id: str, repo: pygit2.Repository) -> bool:
-    """コミット追加・ブランチ追加/削除が未収録なら True を返す。
+    """コミット追加・ブランチ追加/削除・先端変更が未収録なら True を返す。
 
-    先端コミットの未収録、DB に存在しないブランチ、git に存在しないブランチをまとめて検知する。
+    先端コミットの未収録、DB に存在しないブランチ、git に存在しないブランチ、
+    ブランチ先端ハッシュの変更をまとめて検知する。
 
     Args:
         session: DB セッション。
@@ -50,12 +51,17 @@ def _has_change_to_sync(session: Session, repo_id: str, repo: pygit2.Repository)
     Returns:
         再同期が必要なら True。
     """
-    for _, tip in (*iter_local_branches(repo), *iter_remote_branches(repo)):
+    all_current = [*iter_local_branches(repo), *iter_remote_branches(repo)]
+    for _, tip in all_current:
         if commit_repo.get_commit(session, repo_id, tip) is None:
             return True
-    cached = {b.name for b in branch_repo.list_branches(session, repo_id)}
-    current = {*repo.branches.local, *repo.branches.remote}
-    return bool(current - cached) or bool(cached - current)
+    cached_branches = branch_repo.list_branches(session, repo_id)
+    cached_names = {b.name for b in cached_branches}
+    current_names = {name for name, _ in all_current}
+    if bool(current_names - cached_names) or bool(cached_names - current_names):
+        return True
+    cached_tips = {b.name: b.tip_hash for b in cached_branches}
+    return any(cached_tips.get(name) != tip for name, tip in all_current)
 
 
 def sync_repository(session: Session, repo_id: str, repo_path: str) -> None:

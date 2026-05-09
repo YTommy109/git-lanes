@@ -6,7 +6,7 @@ import pygit2
 
 from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
 from backend.services import sync_service
-from backend.services.sync_service import _should_resync
+from backend.services.sync_service import _has_change_to_sync, _should_resync
 from tests.support.git_repo_fixture import make_two_commit_repo
 
 
@@ -188,6 +188,43 @@ def test_should_resync_HEAD変化でTrueを返す(session, tmp_path):
 
     # --- Act ---
     result = _should_resync(session, repo_id, new_head)
+
+    # --- Assert ---
+    assert result is True
+
+
+def test_has_change_to_sync_リモートブランチのtip変更を検知する(session, tmp_path):
+    # --- Arrange ---
+    # コミット A → B の 2 コミット。main=B、origin/main=A（push 前の状態）
+    repo_path = tmp_path / "repo"
+    repo_path.mkdir()
+    repo = pygit2.init_repository(str(repo_path), False)
+    sig = pygit2.Signature("テスト", "t@example.com", 1000, 0)
+
+    (repo_path / "a.txt").write_text("a\n", encoding="utf-8")
+    repo.index.add("a.txt")
+    repo.index.write()
+    oid_a = repo.create_commit("refs/heads/main", sig, sig, "A", repo.index.write_tree(), [])
+
+    (repo_path / "b.txt").write_text("b\n", encoding="utf-8")
+    repo.index.add("b.txt")
+    repo.index.write()
+    oid_b = repo.create_commit("refs/heads/main", sig, sig, "B", repo.index.write_tree(), [oid_a])
+
+    # origin/main は A を指す（push 前）
+    repo.create_reference("refs/remotes/origin/main", oid_a, False)
+
+    repo_id = str(uuid.uuid4())
+    repository_repo.insert_repository(session, repo_id, str(repo_path), "repo")
+    sync_service.sync_repository(session, repo_id, str(repo_path))
+    # DB: main=B, origin/main=A
+
+    # push をシミュレート：origin/main を B（既存コミット）に更新する
+    repo.references["refs/remotes/origin/main"].set_target(oid_b)
+
+    # --- Act ---
+    pygit2_repo = pygit2.Repository(str(repo_path))
+    result = _has_change_to_sync(session, repo_id, pygit2_repo)
 
     # --- Assert ---
     assert result is True
