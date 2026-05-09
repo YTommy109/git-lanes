@@ -10,6 +10,7 @@ from sqlmodel import Session
 from backend.exceptions import GitOpenError
 from backend.repositories import branch_repo, commit_repo, tag_repo
 from backend.services import grid_builder, sync_service
+from backend.services.branch_filter import filter_synced_remote_branches
 from backend.services.fork_point import compute_fork_data, persist_fork_points
 from backend.services.graph_models import GraphResult
 
@@ -36,7 +37,7 @@ def sync_and_build(session: Session, repo_id: str, repo_path: str) -> GraphResul
         raise GitOpenError from exc
     rows = commit_repo.list_all_commits(session, repo_id)
     parents = commit_repo.parents_by_child(session, [r.hash for r in rows])
-    branches = branch_repo.list_branches(session, repo_id)
+    branches = filter_synced_remote_branches(branch_repo.list_branches(session, repo_id))
     tags = tag_repo.list_tags(session, repo_id)
     _logger.debug(
         "グラフ描画: repo_id=%s commits=%d branches=%d", repo_id, len(rows), len(branches)
