@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
-from backend.db import create_db_and_tables, engine
+from backend.db import create_db_and_tables, engine, run_migrations
 from backend.exceptions import AppError
 from backend.logging_config import get_log_path, setup_logging
 from backend.repositories import repository_repo
@@ -50,6 +50,7 @@ def _start_watch_service(app: FastAPI) -> WatchService:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """起動時にテーブル作成と監視サービスを起動する。"""
+    run_migrations()
     create_db_and_tables()
     watch_svc = _start_watch_service(app)
     yield
