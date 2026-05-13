@@ -139,6 +139,13 @@ def main() -> None:
     _register_window_events(win, path, state)
     webview.start()
 
+    # ウィンドウが閉じられたら保留中の debounce タイマーをキャンセルして即座に保存する
+    # daemon=True のタイマーはプロセス終了と同時に強制停止されるため、ここで同期保存する
+    with _timer_lock:
+        if _save_timer is not None:
+            _save_timer.cancel()
+    state_store.save(path, state)
+
 
 if __name__ == "__main__":
     main()

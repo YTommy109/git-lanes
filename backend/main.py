@@ -68,7 +68,12 @@ app.include_router(make_router(event_bus))
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """ドメイン例外を HTTP レスポンスに変換する。"""
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        # WKWebView が charset を誤認識して日本語が文字化けしないよう明示する
+        media_type="application/json; charset=utf-8",
+    )
 
 
 @app.get("/health")
