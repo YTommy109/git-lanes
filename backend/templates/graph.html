@@ -86,6 +86,7 @@
         {# コミット円とラベル #}
         {% for node in nodes %}
           <g
+            id="node-{{ node.commit.hash }}"
             class="commit-node"
             data-lane="{{ node.lane }}"
             data-row="{{ node.row }}"
@@ -153,5 +154,12 @@
     </div>
   </aside>
 </main>
+{% if active_commit %}
+<div hidden
+  _="on load
+       set el to document.getElementById('node-{{ active_commit }}')
+       if el then el.scrollIntoView({block: 'center'}) end">
+</div>
+{% endif %}
 <script src="/static/js/graph-keyboard.js"></script>
 {% endblock %}
