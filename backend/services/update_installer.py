@@ -37,13 +37,16 @@ def _get_app_path() -> Path | None:
     return Path(sys.executable).parent.parent.parent
 
 
-def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) -> Path:
+def _write_updater_script(
+    app_path: Path, mount_point: Path, new_app_src: Path, dmg_path: Path
+) -> Path:
     """インストール用シェルスクリプトを /tmp に書き出す。
 
     Args:
         app_path: 現在の .app パス（削除対象）。
         mount_point: DMG のマウントポイント（アンマウント対象）。
         new_app_src: DMG 内の新しい .app パス（コピー元）。
+        dmg_path: ダウンロードした DMG ファイルのパス（削除対象）。
 
     Returns:
         書き出したスクリプトの Path。
@@ -54,6 +57,7 @@ def _write_updater_script(app_path: Path, mount_point: Path, new_app_src: Path) 
         f'rm -rf "{app_path}"\n'
         f'cp -R "{new_app_src}" "{app_path.parent}/"\n'
         f'hdiutil detach "{mount_point}" -quiet\n'
+        f'rm -f "{dmg_path}"\n'
         f'open "{app_path}"\n'
     )
     _SCRIPT_PATH.write_text(script)
@@ -84,7 +88,7 @@ def install_update() -> InstallResult:
     app_path = _get_app_path()
     if app_path is None:
         return "not_frozen"
-    script_path = _write_updater_script(app_path, mount_point, apps[0])
+    script_path = _write_updater_script(app_path, mount_point, apps[0], Path(dmg_path))
     _logger.info("更新スクリプト: %s", script_path)
     subprocess.Popen(["bash", str(script_path)])
     # sys.exit() は ThreadPoolExecutor ワーカースレッドしか終了しないため、

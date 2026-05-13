@@ -50,11 +50,12 @@ def test_write_updater_script_内容検証(tmp_path):
     app_path = Path("/Applications/Git Lanes.app")
     mount_point = Path("/Volumes/Git Lanes")
     new_app_src = Path("/Volumes/Git Lanes/Git Lanes.app")
+    dmg_path = Path("/Users/user/Downloads/GitLanes-update.dmg")
     script_path = tmp_path / "git-lanes-updater.sh"
 
     # --- Act ---
     with patch.object(installer, "_SCRIPT_PATH", script_path):
-        result = installer._write_updater_script(app_path, mount_point, new_app_src)
+        result = installer._write_updater_script(app_path, mount_point, new_app_src, dmg_path)
 
     # --- Assert ---
     content = result.read_text()
@@ -62,6 +63,23 @@ def test_write_updater_script_内容検証(tmp_path):
     assert f'open "{app_path}"' in content
     assert f'cp -R "{new_app_src}"' in content
     assert "sleep 3" in content
+
+
+def test_write_updater_script_dmg削除コマンドを含む(tmp_path):
+    # --- Arrange ---
+    app_path = Path("/Applications/Git Lanes.app")
+    mount_point = Path("/Volumes/Git Lanes")
+    new_app_src = Path("/Volumes/Git Lanes/Git Lanes.app")
+    dmg_path = Path("/Users/user/Downloads/GitLanes-update.dmg")
+    script_path = tmp_path / "git-lanes-updater.sh"
+
+    # --- Act ---
+    with patch.object(installer, "_SCRIPT_PATH", script_path):
+        result = installer._write_updater_script(app_path, mount_point, new_app_src, dmg_path)
+
+    # --- Assert ---
+    content = result.read_text()
+    assert f'rm -f "{dmg_path}"' in content
 
 
 def _make_plist_bytes(mount_point: str) -> bytes:
