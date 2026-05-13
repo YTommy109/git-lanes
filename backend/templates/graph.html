@@ -143,7 +143,13 @@
   <aside class="-p:20 -bgc:base-2 -fx:1" style="min-width: 18rem" aria-label="コミット詳細">
     <h2>詳細</h2>
     <div id="commit-detail">
-      <p class="-c:text-2">コミットを選択してください。</p>
+      {% if active_detail_commit %}
+        {% set commit = active_detail_commit %}
+        {% set tags = active_detail_tags %}
+        {% include "partials/detail.html" %}
+      {% else %}
+        <p class="-c:text-2">コミットを選択してください。</p>
+      {% endif %}
     </div>
   </aside>
 </main>
