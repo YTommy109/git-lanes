@@ -9,11 +9,29 @@
 ></div>
 <div id="commit-tooltip"
      style="display:none;position:fixed;background:#222;color:#eee;padding:4px 10px;border-radius:4px;font-size:12px;pointer-events:none;z-index:1000;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-<main class="l--flex" style="height: 100%">
+<main id="graph-main" class="l--flex" style="height: 100%">
   <section class="-p:20 -ov:auto -bgc:white" aria-label="コミットグラフ"
            style="flex: 2; border-right: 1px solid var(--divider)">
-    <header>
+    <header style="display:flex;justify-content:space-between;align-items:center">
       <h1>{{ repo_name }}</h1>
+      <div style="display:flex;gap:8px">
+        <button
+          hx-get="/repos/{{ repo_id }}/graph?show_remote={{ 0 if show_remote else 1 }}&show_tags={{ 1 if show_tags else 0 }}"
+          hx-target="#graph-main"
+          hx-swap="outerHTML"
+          hx-select="#graph-main"
+          hx-push-url="true"
+          class="toggle-btn{% if not show_remote %} is-off{% endif %}"
+        >Remote</button>
+        <button
+          hx-get="/repos/{{ repo_id }}/graph?show_remote={{ 1 if show_remote else 0 }}&show_tags={{ 0 if show_tags else 1 }}"
+          hx-target="#graph-main"
+          hx-swap="outerHTML"
+          hx-select="#graph-main"
+          hx-push-url="true"
+          class="toggle-btn{% if not show_tags %} is-off{% endif %}"
+        >Tag</button>
+      </div>
     </header>
     {% if not nodes %}
       <p>コミットがありません。</p>
