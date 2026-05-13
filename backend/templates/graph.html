@@ -86,6 +86,7 @@
         {# コミット円とラベル #}
         {% for node in nodes %}
           <g
+            id="node-{{ node.commit.hash }}"
             class="commit-node"
             data-lane="{{ node.lane }}"
             data-row="{{ node.row }}"
@@ -143,9 +144,22 @@
   <aside class="-p:20 -bgc:base-2 -fx:1" style="min-width: 18rem" aria-label="コミット詳細">
     <h2>詳細</h2>
     <div id="commit-detail">
-      <p class="-c:text-2">コミットを選択してください。</p>
+      {% if active_detail_commit %}
+        {% set commit = active_detail_commit %}
+        {% set tags = active_detail_tags %}
+        {% include "partials/detail.html" %}
+      {% else %}
+        <p class="-c:text-2">コミットを選択してください。</p>
+      {% endif %}
     </div>
   </aside>
 </main>
+{% if active_commit %}
+<div hidden
+  _="on load
+       set el to document.getElementById('node-{{ active_commit }}')
+       if el then el.scrollIntoView({block: 'center'}) end">
+</div>
+{% endif %}
 <script src="/static/js/graph-keyboard.js"></script>
 {% endblock %}
