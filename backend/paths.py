@@ -31,3 +31,12 @@ def primary_db_path() -> Path:
     base = data_dir()
     base.mkdir(parents=True, exist_ok=True)
     return base / "git-lanes.db"
+
+
+def window_state_path() -> Path:
+    """ウィンドウ状態 JSON ファイルのパスを返す。
+
+    Returns:
+        ``{data_dir}/window_state.json``。
+    """
+    return data_dir() / "window_state.json"
