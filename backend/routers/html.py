@@ -36,6 +36,8 @@ async def welcome(
 async def graph_page(
     request: Request,
     repo_id: str,
+    show_remote: bool = True,
+    show_tags: bool = True,
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
     """ブランチグラフ画面を返す。"""
@@ -43,7 +45,13 @@ async def graph_page(
     rec = repository_repo.get_repository(session, rid)
     if rec is None:
         raise RepositoryNotFoundError
-    result = graph_service.sync_and_build(session, rid, rec.path)
+    result = graph_service.sync_and_build(
+        session,
+        rid,
+        rec.path,
+        show_remote=show_remote,
+        show_tags=show_tags,
+    )
     context: dict = {
         "repo_id": rid,
         "repo_name": rec.name,
@@ -54,6 +62,8 @@ async def graph_page(
         "svg_height": result.canvas_height,
         "repos": repository_repo.list_repositories(session),
         "current_repo_id": rid,
+        "show_remote": show_remote,
+        "show_tags": show_tags,
     }
     return templates.TemplateResponse(request, "graph.html", context)
 
