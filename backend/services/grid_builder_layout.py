@@ -115,6 +115,6 @@ def _build_branch_labels(
             continue
         lane_to_names.setdefault(target_lane, []).append(b.name)
     return [
-        GridBranchLabel(lane=ln, names=names, color=lane_to_color[ln])
+        GridBranchLabel(lane=ln, names=names, color=lane_to_color.get(ln, GRID_COLORS[0]))
         for ln, names in lane_to_names.items()
     ]
