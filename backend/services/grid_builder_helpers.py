@@ -23,11 +23,14 @@ def _make_edge(
 
 def init_branch_maps(
     branches: list[Branch],
+    label_only_branches: list[Branch] | None = None,
 ) -> tuple[dict[str, int], dict[str, str], dict[str, str]]:
     """ブランチのレーン・色マップを初期化する。
 
     Args:
         branches: ブランチのリスト。リスト順にレーン番号を割り当てる。
+        label_only_branches: レーンを消費せずラベルのみ表示するブランチ。
+            color_idx を消費せず、対応する tip のブランチの色を借用する。
 
     Returns:
         (tip_lane, color_map, tip_color) のタプル。
@@ -50,6 +53,10 @@ def init_branch_maps(
         if b.tip_hash not in tip_lane:
             tip_lane[b.tip_hash] = branch_lane[b.name]
     tip_color: dict[str, str] = {b.tip_hash: color_map[b.name] for b in branches}
+    # label_only_branches: color_idx を消費せず既存 tip_color から色を借用する
+    for b in label_only_branches or []:
+        if b.name not in color_map and b.tip_hash in tip_color:
+            color_map[b.name] = tip_color[b.tip_hash]
     return tip_lane, color_map, tip_color
 
 
