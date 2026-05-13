@@ -37,3 +37,16 @@ def test_graph_returns_404_for_unknown_repo(client: TestClient):
 
     # --- Assert ---
     assert response.status_code == 404
+
+
+def test_error_response_content_type_includes_charset_utf8(client: TestClient):
+    """エラーレスポンスの Content-Type に charset=utf-8 が含まれること。
+
+    WKWebView が文字コードを誤認識して日本語が文字化けしないために必要。
+    """
+    # --- Act ---
+    response = client.get("/repos/00000000-0000-0000-0000-000000000000/graph")
+
+    # --- Assert ---
+    assert response.status_code == 404
+    assert "charset=utf-8" in response.headers["content-type"].lower()
