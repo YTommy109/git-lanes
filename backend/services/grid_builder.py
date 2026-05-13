@@ -94,6 +94,7 @@ def build_grid(
     tags: list[Tag],
     fork_data: dict[str, ForkData] | None = None,
     label_only_branches: list[Branch] | None = None,
+    head_hash: str | None = None,
 ) -> GraphResult:
     """グリッドエンジンでグラフを構築して GraphResult を返す。
 
@@ -104,6 +105,7 @@ def build_grid(
         tags: タグのリスト。
         fork_data: フォークポイントデータ（省略時は自動計算）。
         label_only_branches: レーンを消費せずラベルのみ表示するブランチ。
+        head_hash: HEAD コミットのフルハッシュ。None のときは HEAD ラベルを付与しない。
 
     Returns:
         SVG テンプレートへ渡す GraphResult。
@@ -112,4 +114,4 @@ def build_grid(
 
     tag_map = _build_tag_map(tags)
     layout = build_layout(commits, parents, branches, tags, fork_data, label_only_branches)
-    return to_svg(layout, commits, parents, tag_map)
+    return to_svg(layout, commits, parents, tag_map, head_hash)

@@ -16,10 +16,14 @@ router = APIRouter(prefix="/api/update", tags=["update"])
 
 @router.get("/check", response_class=HTMLResponse)
 def check_update(request: Request) -> HTMLResponse:
-    """更新確認。更新がなければ空レスポンスを返す。"""
+    """更新確認。更新がなければアイドル div を返す。"""
     result = update_service.check_update()
     if not result["available"]:
-        return HTMLResponse(content="")
+        return templates.TemplateResponse(
+            request,
+            "partials/update_idle.html",
+            {},
+        )
     return templates.TemplateResponse(
         request,
         "partials/update_banner.html",

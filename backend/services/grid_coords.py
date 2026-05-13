@@ -19,6 +19,7 @@ def to_svg(
     commits: list[Commit],
     parents: dict[str, list[str]],
     tag_map: dict[str, list[str]] | None = None,
+    head_hash: str | None = None,
 ) -> GraphResult:
     """GridLayout を GraphResult に変換する。
 
@@ -27,6 +28,7 @@ def to_svg(
         commits: コミットのリスト（SvgNode.commit に渡す）。
         parents: コミットハッシュ → 親ハッシュリスト のマップ。
         tag_map: コミットハッシュ → タグ名リストのマップ。非 tip コミットのバッジ表示に使う。
+        head_hash: HEAD コミットのフルハッシュ。None のときはラベルを付与しない。
 
     Returns:
         SVG テンプレートへ渡す GraphResult。
@@ -34,7 +36,7 @@ def to_svg(
     commit_map: dict[str, Commit] = {c.hash: c for c in commits}
     cw, ch = calc_canvas(layout)
     return GraphResult(
-        nodes=_build_svg_nodes(layout, commit_map, parents, tag_map or {}),
+        nodes=_build_svg_nodes(layout, commit_map, parents, tag_map or {}, head_hash),
         edges=build_svg_edges(layout),
         branch_headers=build_svg_headers(layout),
         canvas_width=cw,
@@ -71,6 +73,7 @@ def _build_svg_nodes(
     commit_map: dict[str, Commit],
     parents: dict[str, list[str]],
     tag_map: dict[str, list[str]],
+    head_hash: str | None = None,
 ) -> list[SvgNode]:
     """GridNode リストを SvgNode リストに変換する。"""
     result: list[SvgNode] = []
@@ -81,6 +84,9 @@ def _build_svg_nodes(
         if commit is None:
             continue
         node_type = _resolve_node_type(node.hash, node.row, parents)
+        labels = _build_tag_labels(node.hash, node_type, tag_map)
+        if head_hash and node.hash == head_hash:
+            labels = [SvgLabel(text="HEAD", kind="head")] + labels
         result.append(
             SvgNode(
                 cx=_cx(node.lane),
@@ -89,7 +95,7 @@ def _build_svg_nodes(
                 row=node.row,
                 color=node.color,
                 commit=commit,
-                labels=_build_tag_labels(node.hash, node_type, tag_map),
+                labels=labels,
                 node_type=node_type,
             )
         )

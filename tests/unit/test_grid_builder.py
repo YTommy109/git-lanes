@@ -694,3 +694,34 @@ def test_label_only_branchesがないときのbranch_labelsは変わらない():
 
     # --- Assert ---
     assert layout_with.branch_labels == layout_without.branch_labels
+
+
+def test_build_grid_HEADコミットにheadラベルが付与される():
+    # --- Arrange ---
+    c1 = _c("aaaaaaa", [], at=2)
+    c2 = _c("bbbbbbb", ["aaaaaaa"], at=1)
+    commits = [c1, c2]
+    parents = _p(commits, {"bbbbbbb": ["aaaaaaa"]})
+    branches = [_b("main", "bbbbbbb")]
+
+    # --- Act ---
+    result = build_grid(commits, parents, branches, [], head_hash="aaaaaaa")
+
+    # --- Assert ---
+    head_node = next(n for n in result.nodes if n.commit.hash == "aaaaaaa")
+    assert any(label.kind == "head" for label in head_node.labels)
+
+
+def test_build_grid_head_hashがNoneのときheadラベルは付与されない():
+    # --- Arrange ---
+    c1 = _c("aaaaaaa", [], at=2)
+    commits = [c1]
+    parents = _p(commits, {})
+    branches = [_b("main", "aaaaaaa")]
+
+    # --- Act ---
+    result = build_grid(commits, parents, branches, [], head_hash=None)
+
+    # --- Assert ---
+    for node in result.nodes:
+        assert not any(label.kind == "head" for label in node.labels)

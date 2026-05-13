@@ -8,7 +8,7 @@ import pygit2
 from sqlmodel import Session
 
 from backend.exceptions import GitOpenError
-from backend.repositories import branch_repo, commit_repo, tag_repo
+from backend.repositories import branch_repo, commit_repo, repository_repo, tag_repo
 from backend.services import grid_builder, sync_service
 from backend.services.branch_filter import categorize_branches
 from backend.services.fork_point import compute_fork_data, persist_fork_points
@@ -43,6 +43,8 @@ def sync_and_build(
         sync_service.sync_repository(session, repo_id, repo_path)
     except pygit2.GitError as exc:
         raise GitOpenError from exc
+    repo_rec = repository_repo.get_repository(session, repo_id)
+    head_hash = repo_rec.cached_head if repo_rec else None
     rows = commit_repo.list_all_commits(session, repo_id)
     parents = commit_repo.parents_by_child(session, [r.hash for r in rows])
     cats = categorize_branches(branch_repo.list_branches(session, repo_id))
@@ -55,5 +57,11 @@ def sync_and_build(
     fork_data = compute_fork_data(rows, parents, branches)
     persist_fork_points(session, branches, fork_data)
     return grid_builder.build_grid(
-        rows, parents, branches, tags, fork_data, label_only_branches=label_only
+        rows,
+        parents,
+        branches,
+        tags,
+        fork_data,
+        label_only_branches=label_only,
+        head_hash=head_hash,
     )
