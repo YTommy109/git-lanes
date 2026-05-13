@@ -1,6 +1,6 @@
 [project]
 name = "git-lanes"
-version = "0.6.2"
+version = "0.6.3"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.136",
@@ -69,7 +69,7 @@ omit = ["tests/*"]
 fail_under = 85
 
 [tool.bumpversion]
-current_version = "0.6.2"
+current_version = "0.6.3"
 commit = true
 commit_args = "--no-verify"
 message = "chore: バージョンを {current_version} から {new_version} に更新する"
