@@ -43,3 +43,22 @@
   background: var(--blue);
   color: white;
 }
+
+/* リモート・タグ表示トグルボタン */
+.toggle-btn {
+  border: 2px solid #4285f4;
+  border-radius: 14px;
+  padding: 4px 14px;
+  font-size: 12px;
+  background: #e8f0fe;
+  color: #4285f4;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle-btn.is-off {
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #999;
+  font-weight: normal;
+}
