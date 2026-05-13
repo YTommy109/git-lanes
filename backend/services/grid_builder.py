@@ -60,12 +60,13 @@ def build_layout(
     branches: list[Branch],
     tags: list[Tag],
     fork_data: dict[str, ForkData] | None = None,
+    label_only_branches: list[Branch] | None = None,
 ) -> GridLayout:
     """グリッドレイアウトを計算する。"""
     if fork_data is None:
         fork_data = compute_fork_data(commits, parents, branches)
     sorted_branches = sort_branches_by_fork_data(branches, fork_data)
-    tip_lane, color_map, tip_color = init_branch_maps(sorted_branches)
+    tip_lane, color_map, tip_color = init_branch_maps(sorted_branches, label_only_branches)
     layout = GridLayout()
     sorted_commits = sorted(commits, key=lambda c: -c.committed_at)
     placed = _place_commits(
@@ -79,7 +80,9 @@ def build_layout(
     build_dummy_nodes(layout, sorted_branches, tip_lane, color_map, placed)
     build_edge_graph(layout, parents, placed)
     tag_map = _build_tag_map(tags)
-    for label in _build_branch_labels(sorted_branches, tip_lane, color_map, placed, tag_map):
+    for label in _build_branch_labels(
+        sorted_branches, tip_lane, color_map, placed, tag_map, label_only_branches
+    ):
         layout.branch_labels.append(label)
     return layout
 
@@ -90,6 +93,7 @@ def build_grid(
     branches: list[Branch],
     tags: list[Tag],
     fork_data: dict[str, ForkData] | None = None,
+    label_only_branches: list[Branch] | None = None,
 ) -> GraphResult:
     """グリッドエンジンでグラフを構築して GraphResult を返す。
 
@@ -98,6 +102,8 @@ def build_grid(
         parents: コミットハッシュ → 親ハッシュリスト のマップ。
         branches: ブランチのリスト。
         tags: タグのリスト。
+        fork_data: フォークポイントデータ（省略時は自動計算）。
+        label_only_branches: レーンを消費せずラベルのみ表示するブランチ。
 
     Returns:
         SVG テンプレートへ渡す GraphResult。
@@ -105,5 +111,5 @@ def build_grid(
     from backend.services.grid_coords import to_svg
 
     tag_map = _build_tag_map(tags)
-    layout = build_layout(commits, parents, branches, tags, fork_data)
+    layout = build_layout(commits, parents, branches, tags, fork_data, label_only_branches)
     return to_svg(layout, commits, parents, tag_map)

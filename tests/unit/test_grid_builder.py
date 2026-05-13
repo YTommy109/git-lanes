@@ -660,3 +660,37 @@ def test_同一tipのリモートブランチがレーンを消費しない():
     assert main_labels is not None
     # 2 ブランチ分のレーン間隔 = 3 レーン（90px）であること
     assert main_labels.lane - feat_labels.lane == 3
+
+
+def test_label_only_branchesのラベルが既存レーンに追加される():
+    # --- Arrange ---
+    # コミット A を tip とするローカル main と、同じ tip の origin/main（label_only）
+    commit_a = _c("aaaaaaa", [])
+    commits = [commit_a]
+    parents = _p(commits, {})
+    main = Branch(name="main", repo_id=_REPO, tip_hash="aaaaaaa", is_remote=0)
+    origin_main = Branch(name="origin/main", repo_id=_REPO, tip_hash="aaaaaaa", is_remote=1)
+
+    # --- Act ---
+    layout = build_layout(commits, parents, [main], [], label_only_branches=[origin_main])
+
+    # --- Assert ---
+    assert len(layout.branch_labels) == 1
+    label = layout.branch_labels[0]
+    assert "main" in label.names
+    assert "origin/main" in label.names
+
+
+def test_label_only_branchesがないときのbranch_labelsは変わらない():
+    # --- Arrange ---
+    commit_a = _c("bbbbbbb", [])
+    commits = [commit_a]
+    parents = _p(commits, {})
+    main = Branch(name="main", repo_id=_REPO, tip_hash="bbbbbbb", is_remote=0)
+
+    # --- Act ---
+    layout_with = build_layout(commits, parents, [main], [], label_only_branches=None)
+    layout_without = build_layout(commits, parents, [main], [])
+
+    # --- Assert ---
+    assert layout_with.branch_labels == layout_without.branch_labels

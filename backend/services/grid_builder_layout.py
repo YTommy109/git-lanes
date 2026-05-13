@@ -87,14 +87,13 @@ def _build_branch_labels(
     color_map: dict[str, str],
     placed: dict[str, GridNode],
     tag_map: dict[str, list[str]],
+    label_only_branches: list[Branch] | None = None,
 ) -> list[GridBranchLabel]:
     """ブランチラベルリストを構築する。"""
     lane_to_names: dict[int, list[str]] = {}
     lane_to_color: dict[int, str] = {}
     for b in branches:
         tip_h = b.tip_hash
-        # tip が row=0 にある（ヘッダー行に直接表示）→ 配置済みレーンを使用。
-        # tip が row>0 にある（ダミーノードで代替）→ ダミーの位置である指定レーンを使用。
         if tip_h in placed and placed[tip_h].row == 0:
             target_lane = placed[tip_h].lane
         else:
@@ -105,6 +104,16 @@ def _build_branch_labels(
         lane_to_color[target_lane] = color_map.get(b.name, GRID_COLORS[0])
         for tag_name in tag_map.get(tip_h, []):
             lane_to_names[target_lane].append(f"[{tag_name}]")
+    # label_only_branches: 独自レーンを持たず既存レーンにラベルのみ追記する
+    for b in label_only_branches or []:
+        tip_h = b.tip_hash
+        if tip_h in placed and placed[tip_h].row == 0:
+            target_lane = placed[tip_h].lane
+        else:
+            target_lane = tip_lane.get(tip_h)
+        if target_lane is None:
+            continue
+        lane_to_names.setdefault(target_lane, []).append(b.name)
     return [
         GridBranchLabel(lane=ln, names=names, color=lane_to_color[ln])
         for ln, names in lane_to_names.items()
