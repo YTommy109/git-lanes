@@ -17,13 +17,21 @@ from backend.services.graph_models import GraphResult
 _logger = logging.getLogger(__name__)
 
 
-def sync_and_build(session: Session, repo_id: str, repo_path: str) -> GraphResult:
+def sync_and_build(
+    session: Session,
+    repo_id: str,
+    repo_path: str,
+    show_remote: bool = True,
+    show_tags: bool = True,
+) -> GraphResult:
     """リポジトリを同期してグラフデータを構築する。
 
     Args:
         session: DB セッション。
         repo_id: リポジトリ ID。
         repo_path: Git 作業コピーのパス。
+        show_remote: False のときリモートブランチを全除外する。
+        show_tags: False のときタグラベルを表示しない。
 
     Returns:
         SVG テンプレートへ渡す GraphResult。
@@ -38,7 +46,9 @@ def sync_and_build(session: Session, repo_id: str, repo_path: str) -> GraphResul
     rows = commit_repo.list_all_commits(session, repo_id)
     parents = commit_repo.parents_by_child(session, [r.hash for r in rows])
     branches = filter_synced_remote_branches(branch_repo.list_branches(session, repo_id))
-    tags = tag_repo.list_tags(session, repo_id)
+    if not show_remote:
+        branches = [b for b in branches if b.is_remote == 0]
+    tags = tag_repo.list_tags(session, repo_id) if show_tags else []
     _logger.debug(
         "グラフ描画: repo_id=%s commits=%d branches=%d", repo_id, len(rows), len(branches)
     )
