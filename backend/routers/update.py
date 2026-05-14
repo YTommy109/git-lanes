@@ -10,8 +10,25 @@ from fastapi.responses import HTMLResponse
 from backend.jinja import templates
 from backend.services import update_service
 from backend.services.update_installer import install_update
+from backend.version import __version__ as _CURRENT_VERSION
 
 router = APIRouter(prefix="/api/update", tags=["update"])
+
+
+@router.get("/dialog", response_class=HTMLResponse)
+def update_dialog(request: Request) -> HTMLResponse:
+    """更新確認ダイアログ用ページを返す。"""
+    result = update_service.check_update()
+    return templates.TemplateResponse(
+        request,
+        "update_dialog.html",
+        {
+            "available": result["available"],
+            "latest_version": result["version"],
+            "current_version": _CURRENT_VERSION,
+            "download_url": result["download_url"],
+        },
+    )
 
 
 @router.get("/check", response_class=HTMLResponse)

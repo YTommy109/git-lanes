@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"/>
+  <title>アップデート確認</title>
+  <link href="https://cdn.jsdelivr.net/npm/lism-css@0.16.0/dist/css/main.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
+</head>
+<body>
+<main class="l--stack -p:40" style="max-width: 360px; margin: 2rem auto">
+  {% if not available %}
+  <p style="font-size: 1.5rem; margin: 0">✓</p>
+  <h2 style="margin: 0.5rem 0 0">最新バージョンです</h2>
+  <p class="-c:text-2" style="margin: 0.5rem 0 0">
+    Git Lanes v{{ current_version }} は最新バージョンです。
+  </p>
+  {% else %}
+  <div id="update-banner" class="l--stack -g:16">
+    <h2 style="margin: 0">v{{ latest_version }} が利用可能です</h2>
+    <dl class="l--stack -g:4" style="font-size: 0.9rem; margin: 0">
+      <div class="l--flex -gap:8">
+        <dt class="-c:text-2" style="min-width: 3rem">現在</dt>
+        <dd style="margin: 0">v{{ current_version }}</dd>
+      </div>
+      <div class="l--flex -gap:8">
+        <dt class="-c:text-2" style="min-width: 3rem">最新</dt>
+        <dd style="margin: 0">v{{ latest_version }}</dd>
+      </div>
+    </dl>
+    {% if download_url %}
+    <button
+      hx-post="/api/update/download"
+      hx-target="#update-banner"
+      hx-swap="outerHTML"
+      style="font-size: 0.9rem">
+      ダウンロード
+    </button>
+    {% else %}
+    <p class="-c:text-2" style="font-size: 0.85rem; margin: 0">
+      <a href="https://github.com/YTommy109/git-lanes/releases/latest" target="_blank">
+        GitHub リリースページ
+      </a>からダウンロードしてください。
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+</main>
+</body>
+</html>
