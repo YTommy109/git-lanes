@@ -6,12 +6,12 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import Session
 
 from backend import paths, state_store
 from backend.db import get_session
-from backend.exceptions import CommitNotFoundError, RepositoryNotFoundError
+from backend.exceptions import CommitNotFoundError
 from backend.jinja import templates
 from backend.models import Commit, Repository
 from backend.repositories import commit_repo, repository_repo, tag_repo
@@ -100,12 +100,13 @@ async def graph_page(
     show_tags: bool = True,
     active_commit: str | None = Query(default=None),
     session: Session = Depends(get_session),
-) -> HTMLResponse:
+) -> Response:
     """ブランチグラフ画面を返す。"""
     rid = parse_repo_id(repo_id)
     rec = repository_repo.get_repository(session, rid)
     if rec is None:
-        raise RepositoryNotFoundError
+        # window_state.json に古い repo_id が残っていてもエラーにしない
+        return RedirectResponse(url="/", status_code=302)
     result = graph_service.sync_and_build(
         session, rid, rec.path, show_remote=show_remote, show_tags=show_tags
     )
