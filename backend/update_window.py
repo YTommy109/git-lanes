@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 import webview
 
@@ -29,7 +30,13 @@ try:
 
         def checkForUpdates_(self, sender: object) -> None:
             """クリック時に更新確認ダイアログを開く。"""
-            open_update_dialog(self._port)  # type: ignore[attr-defined]
+            # webview.create_window() はメインスレッドから呼ぶと即時描画されないため
+            # バックグラウンドスレッドで呼び出す必要がある
+            threading.Thread(
+                target=open_update_dialog,
+                args=(self._port,),  # type: ignore[attr-defined]
+                daemon=True,
+            ).start()
 
     class _MenuInstaller(_NSObject):  # type: ignore[misc]
         """メインスレッドでメニュー項目を挿入するヘルパー。"""
