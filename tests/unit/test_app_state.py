@@ -64,9 +64,9 @@ def test_main_は終了時にウィンドウ状態をファイルに保存する
     monkeypatch.setattr("backend.app.MenuAction", MagicMock())
     monkeypatch.setattr("backend.app.state_store.load", lambda p: state)
     monkeypatch.setattr("backend.app.paths.window_state_path", lambda: path)
-    monkeypatch.setattr("backend.app._find_free_port", lambda: 8999)
-    monkeypatch.setattr("backend.app._start_server", lambda port: None)
-    monkeypatch.setattr("backend.app._wait_for_server", lambda *a, **kw: True)
+    monkeypatch.setattr("backend.app.find_free_port", lambda: 8999)
+    monkeypatch.setattr("backend.app.start_server", lambda port: None)
+    monkeypatch.setattr("backend.app.wait_for_server", lambda *a, **kw: True)
 
     # --- Act ---
     app_module.main()

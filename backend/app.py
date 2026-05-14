@@ -1,18 +1,15 @@
 """pywebview アプリケーションのエントリポイント。"""
 
 import os
-import socket
 import threading
-import time
 
-import uvicorn
 import webview
 from webview import Window
-from webview.menu import Menu, MenuAction
 
 from backend import paths, state_store
-from backend.services import update_service
+from backend.server import find_free_port, start_server, wait_for_server
 from backend.state_store import WindowState
+from backend.update_window import Menu, MenuAction, open_update_dialog
 
 # アプリモードを宣言してからバックエンドをインポートさせる（ログレベルが INFO になる）
 # uvicorn.run は文字列で "backend.main:app" を受けるので実行時まで main はインポートされない
@@ -22,42 +19,6 @@ HOST = "127.0.0.1"
 
 _save_timer: threading.Timer | None = None
 _timer_lock = threading.Lock()
-_update_win: Window | None = None
-
-
-def _find_free_port() -> int:
-    """OS に空きポートを割り当ててもらう。"""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
-
-
-def _start_server(port: int) -> None:
-    """バックグラウンドスレッドで uvicorn を起動する。"""
-    uvicorn.run("backend.main:app", host=HOST, port=port, log_level="warning")
-
-
-def _wait_for_server(port: int, timeout: float = 10.0) -> bool:
-    """サーバーが応答するまで待機する。
-
-    Args:
-        port: 待機するポート番号。
-        timeout: 最大待機秒数。
-
-    Returns:
-        サーバーが起動したら True、タイムアウトなら False。
-    """
-    import urllib.request
-
-    url = f"http://{HOST}:{port}/health"
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        try:
-            urllib.request.urlopen(url, timeout=1)
-            return True
-        except Exception:
-            time.sleep(0.2)
-    return False
 
 
 def _build_initial_url(port: int, state: WindowState) -> str:
@@ -78,36 +39,6 @@ def _build_initial_url(port: int, state: WindowState) -> str:
     if state.commit_hash:
         url += f"&active_commit={state.commit_hash}"
     return url
-
-
-def _open_update_dialog(port: int) -> None:
-    """更新確認ダイアログを開く。すでに開いていれば何もしない。
-
-    Args:
-        port: FastAPI が Listen しているポート番号。
-    """
-    global _update_win
-    if _update_win is not None:
-        return
-    update_service.invalidate_cache()
-    url = f"http://{HOST}:{port}/api/update/dialog"
-    win = webview.create_window(
-        title="アップデート確認",
-        url=url,
-        width=400,
-        height=260,
-        resizable=False,
-    )
-
-    if win is None:
-        return
-
-    def _on_closed() -> None:
-        global _update_win
-        _update_win = None
-
-    win.events.closed += _on_closed
-    _update_win = win
 
 
 def _schedule_save(path: object, state: WindowState) -> None:
@@ -149,22 +80,22 @@ def main() -> None:
     path = paths.window_state_path()
     state = state_store.load(path)
 
-    port = _find_free_port()
+    port = find_free_port()
     menu = [
         Menu(
             "Git Lanes",
             [
                 MenuAction(
                     "Check for Updates...",
-                    lambda: _open_update_dialog(port),
+                    lambda: open_update_dialog(port),
                 ),
             ],
         )
     ]
-    server_thread = threading.Thread(target=_start_server, args=(port,), daemon=True)
+    server_thread = threading.Thread(target=start_server, args=(port,), daemon=True)
     server_thread.start()
 
-    if not _wait_for_server(port):
+    if not wait_for_server(port):
         raise RuntimeError("サーバーの起動がタイムアウトしました。")
 
     win = webview.create_window(
