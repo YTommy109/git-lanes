@@ -8,8 +8,10 @@ import time
 import uvicorn
 import webview
 from webview import Window
+from webview.menu import Menu, MenuAction
 
 from backend import paths, state_store
+from backend.services import update_service
 from backend.state_store import WindowState
 
 # アプリモードを宣言してからバックエンドをインポートさせる（ログレベルが INFO になる）
@@ -20,6 +22,7 @@ HOST = "127.0.0.1"
 
 _save_timer: threading.Timer | None = None
 _timer_lock = threading.Lock()
+_update_win: Window | None = None
 
 
 def _find_free_port() -> int:
@@ -77,6 +80,36 @@ def _build_initial_url(port: int, state: WindowState) -> str:
     return url
 
 
+def _open_update_dialog(port: int) -> None:
+    """更新確認ダイアログを開く。すでに開いていれば何もしない。
+
+    Args:
+        port: FastAPI が Listen しているポート番号。
+    """
+    global _update_win
+    if _update_win is not None:
+        return
+    update_service.invalidate_cache()
+    url = f"http://{HOST}:{port}/api/update/dialog"
+    win = webview.create_window(
+        title="アップデート確認",
+        url=url,
+        width=400,
+        height=260,
+        resizable=False,
+    )
+
+    if win is None:
+        return
+
+    def _on_closed() -> None:
+        global _update_win
+        _update_win = None
+
+    win.events.closed += _on_closed
+    _update_win = win
+
+
 def _schedule_save(path: object, state: WindowState) -> None:
     """デバウンスしてウィンドウ状態を保存する（500ms 後に書き込み）。"""
     global _save_timer
@@ -117,6 +150,17 @@ def main() -> None:
     state = state_store.load(path)
 
     port = _find_free_port()
+    menu = [
+        Menu(
+            "Git Lanes",
+            [
+                MenuAction(
+                    "Check for Updates...",
+                    lambda: _open_update_dialog(port),
+                ),
+            ],
+        )
+    ]
     server_thread = threading.Thread(target=_start_server, args=(port,), daemon=True)
     server_thread.start()
 
@@ -137,7 +181,7 @@ def main() -> None:
         raise RuntimeError("ウィンドウの作成に失敗しました。")
 
     _register_window_events(win, path, state)
-    webview.start()
+    webview.start(menu=menu)
 
     # ウィンドウが閉じられたら保留中の debounce タイマーをキャンセルして即座に保存する
     # daemon=True のタイマーはプロセス終了と同時に強制停止されるため、ここで同期保存する
