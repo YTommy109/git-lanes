@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 import webview
 
 from backend.services import update_service
+
+_logger = logging.getLogger(__name__)
 
 HOST = "127.0.0.1"
 
@@ -32,11 +36,17 @@ try:
 
         def install_(self, _: object) -> None:
             """アプリケーションメニューの About 直下にセパレーターと項目を挿入する。"""
-            app_menu = NSApplication.sharedApplication().mainMenu().itemAtIndex_(0).submenu()
+            main_menu = NSApplication.sharedApplication().mainMenu()
+            if main_menu is None or main_menu.numberOfItems() == 0:
+                return
+            app_menu = main_menu.itemAtIndex_(0).submenu()
+            if app_menu is None:
+                return
             sep = NSMenuItem.separatorItem()
             item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                 "Check for Updates...", "checkForUpdates:", ""
             )
+            # PyObjC セレクター内では引数渡しができないためモジュールスコープで保持
             item.setTarget_(_menu_target)
             app_menu.insertItem_atIndex_(sep, 1)
             app_menu.insertItem_atIndex_(item, 2)
@@ -91,5 +101,5 @@ def setup_app_menu(port: int) -> None:
         _menu_target._port = port  # type: ignore[attr-defined]
         installer = _MenuInstaller.alloc().init()
         installer.performSelectorOnMainThread_withObject_waitUntilDone_("install:", None, True)
-    except Exception:
-        pass
+    except Exception as e:
+        _logger.warning("メニュー設定に失敗しました: %s", e)
