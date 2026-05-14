@@ -9,7 +9,7 @@ from webview import Window
 from backend import paths, state_store
 from backend.server import find_free_port, start_server, wait_for_server
 from backend.state_store import WindowState
-from backend.update_window import Menu, MenuAction, open_update_dialog
+from backend.update_window import setup_app_menu
 
 # アプリモードを宣言してからバックエンドをインポートさせる（ログレベルが INFO になる）
 # uvicorn.run は文字列で "backend.main:app" を受けるので実行時まで main はインポートされない
@@ -81,17 +81,6 @@ def main() -> None:
     state = state_store.load(path)
 
     port = find_free_port()
-    menu = [
-        Menu(
-            "Git Lanes",
-            [
-                MenuAction(
-                    "Check for Updates...",
-                    lambda: open_update_dialog(port),
-                ),
-            ],
-        )
-    ]
     server_thread = threading.Thread(target=start_server, args=(port,), daemon=True)
     server_thread.start()
 
@@ -112,7 +101,7 @@ def main() -> None:
         raise RuntimeError("ウィンドウの作成に失敗しました。")
 
     _register_window_events(win, path, state)
-    webview.start(menu=menu)
+    webview.start(func=lambda: setup_app_menu(port))
 
     # ウィンドウが閉じられたら保留中の debounce タイマーをキャンセルして即座に保存する
     # daemon=True のタイマーはプロセス終了と同時に強制停止されるため、ここで同期保存する

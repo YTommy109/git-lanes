@@ -3,13 +3,48 @@
 from __future__ import annotations
 
 import webview
-from webview.menu import Menu, MenuAction  # noqa: F401
 
 from backend.services import update_service
 
-_update_win: webview.Window | None = None
-
 HOST = "127.0.0.1"
+
+_update_win: webview.Window | None = None
+_menu_target: object | None = None  # NSObject の GC 防止のためモジュールスコープで保持
+
+try:
+    from AppKit import (  # type: ignore[import]
+        NSApplication,  # ty: ignore[unresolved-import]
+        NSMenuItem,  # ty: ignore[unresolved-import]
+    )
+    from AppKit import (  # type: ignore[import]
+        NSObject as _NSObject,  # ty: ignore[unresolved-import]
+    )
+
+    class _UpdateMenuTarget(_NSObject):  # type: ignore[misc]
+        """Check for Updates... メニュー項目のアクションターゲット。"""
+
+        def checkForUpdates_(self, sender: object) -> None:
+            """クリック時に更新確認ダイアログを開く。"""
+            open_update_dialog(self._port)  # type: ignore[attr-defined]
+
+    class _MenuInstaller(_NSObject):  # type: ignore[misc]
+        """メインスレッドでメニュー項目を挿入するヘルパー。"""
+
+        def install_(self, _: object) -> None:
+            """アプリケーションメニューの About 直下にセパレーターと項目を挿入する。"""
+            app_menu = NSApplication.sharedApplication().mainMenu().itemAtIndex_(0).submenu()
+            sep = NSMenuItem.separatorItem()
+            item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                "Check for Updates...", "checkForUpdates:", ""
+            )
+            item.setTarget_(_menu_target)
+            app_menu.insertItem_atIndex_(sep, 1)
+            app_menu.insertItem_atIndex_(item, 2)
+
+    _APPKIT_AVAILABLE = True
+
+except ImportError:
+    _APPKIT_AVAILABLE = False
 
 
 def open_update_dialog(port: int) -> None:
@@ -39,3 +74,22 @@ def open_update_dialog(port: int) -> None:
 
     win.events.closed += _on_closed
     _update_win = win
+
+
+def setup_app_menu(port: int) -> None:
+    """macOS アプリケーションメニューに「Check for Updates...」を追加する。
+
+    webview.start(func=...) のコールバックから呼び出す。
+    メインスレッドへのディスパッチは performSelectorOnMainThread で行う。
+
+    Args:
+        port: FastAPI が Listen しているポート番号。
+    """
+    global _menu_target
+    try:
+        _menu_target = _UpdateMenuTarget.alloc().init()
+        _menu_target._port = port  # type: ignore[attr-defined]
+        installer = _MenuInstaller.alloc().init()
+        installer.performSelectorOnMainThread_withObject_waitUntilDone_("install:", None, True)
+    except Exception:
+        pass
