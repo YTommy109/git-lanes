@@ -112,3 +112,18 @@ def test_download_update_進捗更新(tmp_path):
     assert svc._download_state["status"] == "done"
     assert svc._download_state["percent"] == 100
     assert svc._download_state["dmg_path"] == str(dmg_dest)
+
+
+def test_invalidate_cache_はキャッシュをクリアする():
+    # --- Arrange ---
+    import time
+
+    svc._cache["checked_at"] = time.monotonic()
+    svc._cache["result"] = {"available": False, "version": "0.1.0", "download_url": None}
+
+    # --- Act ---
+    svc.invalidate_cache()
+
+    # --- Assert ---
+    assert svc._cache["checked_at"] is None
+    assert svc._cache["result"] is None

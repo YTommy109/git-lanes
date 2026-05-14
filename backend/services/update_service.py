@@ -106,6 +106,12 @@ def _do_download(url: str, dest: Path | None = None) -> None:
         _download_state["status"] = "error"
 
 
+def invalidate_cache() -> None:
+    """更新確認キャッシュを無効化する（次回 check_update で強制再取得）。"""
+    _cache["checked_at"] = None
+    _cache["result"] = None
+
+
 def download_update(url: str) -> None:
     """ダウンロードをバックグラウンドスレッドで開始する。
 
