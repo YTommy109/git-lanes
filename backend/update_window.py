@@ -17,12 +17,12 @@ _update_win: webview.Window | None = None
 _menu_target: object | None = None  # NSObject の GC 防止のためモジュールスコープで保持
 
 try:
-    from AppKit import (  # type: ignore[import]
-        NSApplication,  # ty: ignore[unresolved-import]
-        NSMenuItem,  # ty: ignore[unresolved-import]
+    from AppKit import (  # ty: ignore[unresolved-import]
+        NSApplication,  # type: ignore[import]  # ty: ignore[unresolved-import]
+        NSMenuItem,  # type: ignore[import]  # ty: ignore[unresolved-import]
     )
-    from AppKit import (  # type: ignore[import]
-        NSObject as _NSObject,  # ty: ignore[unresolved-import]
+    from AppKit import (  # ty: ignore[unresolved-import]
+        NSObject as _NSObject,  # type: ignore[import]  # ty: ignore[unresolved-import]
     )
 
     class _UpdateMenuTarget(_NSObject):  # type: ignore[misc]
