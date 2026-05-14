@@ -31,12 +31,20 @@ def test_register_rejects_duplicate_path(tmp_path, client: TestClient):
     assert "/graph" in second.headers["location"]
 
 
-def test_graph_returns_404_for_unknown_repo(client: TestClient):
+def test_graph_redirects_to_welcome_for_unknown_repo(client: TestClient):
+    """存在しない repo_id でグラフを開くとウェルカム画面へリダイレクトすること。
+
+    window_state.json に古い repo_id が残っていてもエラー画面にならないために必要。
+    """
     # --- Act ---
-    response = client.get("/repos/00000000-0000-0000-0000-000000000000/graph")
+    response = client.get(
+        "/repos/00000000-0000-0000-0000-000000000000/graph",
+        follow_redirects=False,
+    )
 
     # --- Assert ---
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.headers["location"] == "/"
 
 
 def test_error_response_content_type_includes_charset_utf8(client: TestClient):
@@ -45,8 +53,8 @@ def test_error_response_content_type_includes_charset_utf8(client: TestClient):
     WKWebView が文字コードを誤認識して日本語が文字化けしないために必要。
     """
     # --- Act ---
-    response = client.get("/repos/00000000-0000-0000-0000-000000000000/graph")
+    response = client.post("/api/repos", data={"path": "/nonexistent/path/zzz"})
 
     # --- Assert ---
-    assert response.status_code == 404
+    assert response.status_code == 400
     assert "charset=utf-8" in response.headers["content-type"].lower()
