@@ -21,6 +21,8 @@
 .commit-detail-body p {
   margin: 0;
   word-break: break-all;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* サイドバーリポジトリリンク */
